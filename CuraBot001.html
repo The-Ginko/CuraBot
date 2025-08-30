@@ -1,0 +1,3229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NanoHealer: Internal Odyssey</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Dark background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Changed from 10vh to 100vh for proper centering */
+            margin: 0;
+            overflow: hidden; /* Prevent scrolling */
+        }
+        canvas {
+            background-color: #0d121c; /* Darker background for the body */
+            border: 4px solid #4a5568; /* Subtle border for the body */
+            border-radius: 1.5rem; /* Rounded corners for the game area */
+            display: block;
+            touch-action: none; /* Disable default touch actions like scrolling/zooming */
+        }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1rem;
+            background-color: #2d3748; /* Container background */
+            border-radius: 2rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5);
+            position: relative; /* ADDED THIS LINE */
+        }
+        .game-title {
+            color: #e2e8f0; /* Light text for title */
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        }
+        .hud-panel {
+            background-color: #2d3748;
+            border-radius: 1rem;
+            padding: 0.75rem 1.5rem;
+            margin-top: 1rem;
+            display: flex;
+            gap: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 600px; /* Match canvas width */
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap; /* Allow items to wrap on smaller screens */
+        }
+        .hud-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #cbd5e0;
+            font-size: 0.9rem;
+            font-weight: 600;
+            min-width: 80px; /* Ensure items don't get too small */
+        }
+        .progress-bar-container {
+            width: 100px;
+            height: 15px;
+            background-color: #4a5568;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            margin-top: 0.25rem;
+            border: 1px solid #718096;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #48bb78; /* Green for health */
+            width: 100%; /* Default to full */
+            border-radius: 0.5rem;
+            transition: width 0.1s ease-out;
+        }
+        .tool-display {
+            font-size: 1.1rem;
+            color: #9f7aea; /* Purple for tools */
+        }
+        .game-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #e2e8f0;
+            padding: 2rem 3rem;
+            border-radius: 1.5rem;
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 700;
+            z-index: 100;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+            border: 2px solid #a0aec0;
+            /* Added display flex to ensure content is laid out when visible */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+        .game-button {
+            background-color: #63b3ed; /* Blue button */
+            color: #1a202c;
+            padding: 0.75rem 2rem;
+            border-radius: 1rem;
+            font-size: 1.2rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            margin-top: 1.5rem;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        .game-button:hover {
+            background-color: #4299e1;
+            transform: translateY(-2px);
+        }
+        .game-button:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+        /* Style for the sound toggle button */
+        #soundToggleButton {
+            background-color: #f6ad55; /* Orange */
+            color: #1a202c;
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        #soundToggleButton:hover {
+            background-color: #ed8936;
+            transform: translateY(-1px);
+        }
+        #soundToggleButton:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        /* Debug menu specific styles */
+        .debug-menu-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.9);
+            color: #e2e8f0;
+            padding: 2rem 3rem;
+            border-radius: 1.5rem;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            z-index: 100;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+            border: 2px solid #a0aec0;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .debug-option {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            width: 100%;
+        }
+
+        .debug-toggle-button {
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            width: 80px; /* Fixed width for toggle */
+        }
+        .debug-toggle-on {
+            background-color: #48bb78; /* Green for ON */
+            color: #1a202c;
+        }
+        .debug-toggle-off {
+            background-color: #f56565; /* Red for OFF */
+            color: #1a202c;
+        }
+        .debug-toggle-button:hover {
+            transform: translateY(-1px);
+        }
+        .debug-toggle-button:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        /* Level Select specific styles */
+        .level-select-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+        .level-select-button {
+            background-color: #9f7aea; /* Purple button */
+            color: #1a202c;
+            padding: 0.6rem 1.5rem;
+            border-radius: 0.75rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .level-select-button:hover {
+            background-color: #805ad5;
+            transform: translateY(-1px);
+        }
+        .level-select-button:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 flex flex-col items-center justify-center min-h-screen p-4">
+    <div class="game-container">
+        <h1 class="game-title">NanoHealer: Internal Odyssey</h1>
+        <canvas id="gameCanvas"></canvas>
+        <div class="hud-panel">
+            <div class="hud-item">
+                <span>Energy</span>
+                <div class="progress-bar-container">
+                    <div id="energyBar" class="progress-bar" style="background-color: #48bb78;"></div>
+                </div>
+            </div>
+            <div class="hud-item">
+                <span>Tool</span>
+                <span id="currentTool" class="tool-display">Standard Pulse</span>
+            </div>
+            <!-- Organ health bars - these will be dynamically updated based on the current level's organs -->
+            <div id="organHealthBarsContainer" class="flex flex-wrap justify-center gap-1.5">
+                <!-- Organ health bars will be dynamically inserted here -->
+            </div>
+            <button id="soundToggleButton">Mute Sound</button> <!-- Sound toggle button -->
+        </div>
+
+        <div id="gameOverlay" class="game-message hidden">
+            <span id="overlayMessage"></span>
+            <button id="startButton" class="game-button hidden">Start Game</button>
+            <button id="debugMenuButton" class="game-button hidden">Debug Menu</button>
+            <button id="restartButton" class="game-button hidden">Restart</button>
+            <button id="returnToMainMenuButton" class="game-button hidden">Return to Main Menu</button>
+        </div>
+
+        <div id="debugMenuOverlay" class="debug-menu-overlay hidden">
+            <h2 id="debugMenuTitle">Debug Menu</h2>
+            <div id="debugOptions" class="flex flex-col gap-1rem">
+                <div class="debug-option">
+                    <span>Organ Labels:</span>
+                    <button id="organLabelsToggle" class="debug-toggle-button debug-toggle-off">OFF</button>
+                </div>
+                <div class="debug-option">
+                    <span>Infinite Energy:</span>
+                    <button id="infiniteEnergyToggle" class="debug-toggle-button debug-toggle-off">OFF</button>
+                </div>
+                <div class="debug-option">
+                    <span>Detailed Lung Outline:</span>
+                    <button id="detailedLungOutlineToggle" class="debug-toggle-button debug-toggle-off">OFF</button>
+                </div>
+                <div class="debug-option" id="exportBezierOption" style="display: none;">
+                    <span>Export Current Bezier:</span>
+                    <button id="exportBezierButton" class="game-button">Copy to Clipboard</button>
+                </div>
+                <button id="levelSelectButton" class="game-button">Level Select</button>
+                <button id="testSoundsButton" class="game-button">Test Sounds</button> <!-- New Test Sounds Button -->
+                <button id="exitGameButton" class="game-button">Exit Game</button> <!-- New Exit Game Button -->
+            </div>
+            <div id="levelSelectContainer" class="level-select-container hidden">
+                <button id="levelAButton" class="level-select-button">Level A</button>
+                <button id="levelBButton" class="level-select-button">Level B</button>
+                <button id="levelCButton" class="level-select-button">Level C (Lungs)</button> <!-- New Level C Button -->
+                <button id="levelCBetaButton" class="level-select-button">Level C Beta (New Lungs)</button> <!-- New Level C Beta Button -->
+                <button id="backToDebugMenuButton" class="game-button">Back to Debug Menu</button>
+            </div>
+            <button id="backToMainMenuFromDebugButton" class="game-button">Back to Main Menu</button>
+        </div>
+    </div>
+
+    <script type="module">
+        // Get the canvas and its 2D rendering context
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas dimensions (responsive based on screen size, but with max)
+        const CANVAS_WIDTH = Math.min(window.innerWidth * 0.9, 800);
+        const CANVAS_HEIGHT = Math.min(window.innerHeight * 0.7, 600);
+        canvas.width = CANVAS_WIDTH;
+        canvas.height = CANVAS_HEIGHT;
+
+        // Camera object - Declared with 'let' so its properties can be set later.
+        // Initialize with default values, actual dimensions will be set in loadLevel.
+        let camera = {
+            x: 0,
+            y: 0,
+            width: CANVAS_WIDTH,
+            height: CANVAS_HEIGHT,
+        };
+
+        // Editor Camera variables (for bezierEdit mode)
+        let editorCameraX = 0;
+        let editorCameraY = 0;
+        let editorZoomLevel = 1.0;
+        const MIN_ZOOM = 0.2;
+        const MAX_ZOOM = 4.0;
+        const ZOOM_STEP = 0.5; // Increased for more noticeable changes
+        const EDITOR_CAMERA_SPEED = 200; // Pixels per second
+
+        // Level Configurations
+        const levelConfigurations = {
+            levelA: {
+                worldWidth: 800,
+                worldHeight: 3500,
+                initialCuraBotX: 800 / 2,
+                initialCuraBotY: 3500 / 2,
+                organs: [
+                    { name: 'Brain', x: 800 / 2, y: 3500 * 0.08, radius: 100, health: 100, maxHealth: 100, damageRate: 5, healingRate: 20, drawShape: 'brain', lastHostileWBCSpawn: 0, isDamagedVisual: false, isHealingVisual: false, visualTimer: 0, visualDuration: 0.5 },
+                    { name: 'Left Lung', x: 800 * 0.25, y: 3500 * 0.25, radius: 80, health: 100, maxHealth: 100, damageRate: 5, healingRate: 20, drawShape: 'lung', lastHostileWBCSpawn: 0, isDamagedVisual: false, isHealingVisual: false, visualTimer: 0, visualDuration: 0.5 },
+                    { name: 'Right Lung', x: 800 * 0.75, y: 3500 * 0.25, radius: 80, health: 100, maxHealth: 100, damageRate: 5, healingRate: 20, drawShape: 'lung', lastHostileWBCSpawn: 0, isDamagedVisual: false, isHealingVisual: false, visualTimer: 0, visualDuration: 0.5 },
+                    { name: 'Heart', x: 800 * 0.5, y: 3500 * 0.45, radius: 60, health: 100, maxHealth: 100, damageRate: 5, healingRate: 20, drawShape: 'heart', lastHostileWBCSpawn: 0, isDamagedVisual: false, isHealingVisual: false, visualTimer: 0, visualDuration: 0.5 },
+                    { name: 'Liver', x: 800 * 0.65, y: 3500 * 0.58, radius: 100, health: 100, maxHealth: 100, damageRate: 5, healingRate: 20, drawShape: 'liver', lastHostileWBCSpawn: 0, isDamagedVisual: false, isHealingVisual: false, visualTimer: 0, visualDuration: 0.5 },
+                    { name: 'Stomach', x: 800 * 0.35, y: 3500 * 0.60, radius: 80, health: 100, maxHealth: 100, damageRate: 5, healingRate: 20, drawShape: 'stomach', lastHostileWBCSpawn: 0, isDamagedVisual: false, isHealingVisual: false, visualTimer: 0, visualDuration: 0.5 },
+                    { name: 'Kidney', x: 800 * 0.7, y: 3500 * 0.75, radius: 50, health: 100, maxHealth: 100, damageRate: 5, healingRate: 20, drawShape: 'kidney', lastHostileWBCSpawn: 0, isDamagedVisual: false, isHealingVisual: false, visualTimer: 0, visualDuration: 0.5 },
+                    { name: 'Large Intestine', x: 800 * 0.5, y: 3500 * 0.78, radius: 180, health: 100, maxHealth: 100, damageRate: 5, healingRate: 20, drawShape: 'largeIntestine', lastHostileWBCSpawn: 0, isDamagedVisual: false, isHealingVisual: false, visualTimer: 0, visualDuration: 0.5 },
+                    { name: 'Small Intestine', x: 800 * 0.5, y: 3500 * 0.90, radius: 100, health: 100, maxHealth: 100, damageRate: 5, healingRate: 20, drawShape: 'smallIntestine', lastHostileWBCSpawn: 0, isDamagedVisual: false, isHealingVisual: false, visualTimer: 0, visualDuration: 0.5 },
+                    { name: 'Appendix', x: 800 * 0.75, y: 3500 * 0.90, radius: 15, health: 100, maxHealth: 100, damageRate: 5, healingRate: 20, drawShape: 'appendix', lastHostileWBCSpawn: 0, isDamagedVisual: false, isHealingVisual: false, visualTimer: 0, visualDuration: 0.5 },
+                ],
+            },
+            levelB: {
+                worldWidth: 600,
+                worldHeight: 1000,
+                initialCuraBotX: 600 / 2,
+                initialCuraBotY: 1000 / 2,
+                organs: [
+                    { name: 'Heart', x: 600 / 2, y: 1000 * 0.3, radius: 70, health: 100, maxHealth: 100, damageRate: 7, healingRate: 25, drawShape: 'heart', lastHostileWBCSpawn: 0, isDamagedVisual: false, isHealingVisual: false, visualTimer: 0, visualDuration: 0.5 },
+                    { name: 'Brain', x: 600 / 2, y: 1000 * 0.7, radius: 120, health: 100, maxHealth: 100, damageRate: 6, healingRate: 22, drawShape: 'brain', lastHostileWBCSpawn: 0, isDamagedVisual: false, isHealingVisual: false, visualTimer: 0, visualDuration: 0.5 },
+                ],
+            },
+            // Level C: Programmatic Lung Structure (now a backup of levelC_beta)
+            levelC: {
+                worldWidth: 800,
+                worldHeight: 1200, // Keep world height for now, adjust lung shape within it
+                initialCuraBotX: 400,
+                initialCuraBotY: 350, // Changed from 250 to 350 to spawn further into trachea
+                organs: [
+                    { name: 'Lung', x: 400, y: 600, radius: 300, health: 100, maxHealth: 100, damageRate: 5, healingRate: 20, drawShape: 'lung', lastHostileWBCSpawn: 0, isDamagedVisual: false, isHealingVisual: false, visualTimer: 0, visualDuration: 0.5 },
+                ],
+                lungStructures: {
+                    trachea: {
+                        id: 'trachea', x: 370, y: 200, width: 90, length: 200, // Increased width from 70 to 90
+                        startX: 0, startY: 0, endX: 0, endY: 0,
+                        visualColor: 'rgba(255, 255, 255, 0.1)',
+                        wallColor: 'rgba(255, 0, 0, 0.8)',
+                    },
+                    bronchi: [
+                        { id: 'mainLeft', parent: 'trachea', branchOffset: 180, length: 200, width: 60, angle: 3 * Math.PI / 4, // Shorter
+                          startX: 0, startY: 0, endX: 0, endY: 0,
+                          visualColor: 'rgba(255, 255, 255, 0.1)' },
+                        { id: 'mainRight', parent: 'trachea', branchOffset: 180, length: 200, width: 60, angle: Math.PI / 4, // Shorter
+                          startX: 0, startY: 0, endX: 0, endY: 0,
+                          visualColor: 'rgba(255, 255, 255, 0.1)' },
+                        { id: 'secLeftUpper', parent: 'mainLeft', branchOffset: 180, length: 80, width: 55, angle: (3 * Math.PI / 4) - Math.PI / 8, // Shorter, adjusted offset
+                          startX: 0, startY: 0, endX: 0, endY: 0,
+                          visualColor: 'rgba(255, 255, 255, 0.1)' },
+                        { id: 'secLeftLower', parent: 'mainLeft', branchOffset: 180, length: 100, width: 55, angle: (3 * Math.PI / 4) + Math.PI / 8, // Shorter, adjusted offset
+                          startX: 0, startY: 0, endX: 0, endY: 0,
+                          visualColor: 'rgba(255, 255, 255, 0.1)' },
+                        { id: 'secRightUpper', parent: 'mainRight', branchOffset: 180, length: 80, width: 55, angle: (Math.PI / 4) - Math.PI / 8, // Shorter, adjusted offset
+                          startX: 0, startY: 0, endX: 0, endY: 0,
+                          visualColor: 'rgba(255, 255, 255, 0.1)' },
+                        { id: 'secRightLower', parent: 'mainRight', branchOffset: 180, length: 100, width: 55, angle: (Math.PI / 4) + Math.PI / 8, // Shorter, adjusted offset
+                          startX: 0, startY: 0, endX: 0, endY: 0,
+                          visualColor: 'rgba(255, 255, 255, 0.1)' },
+                    ],
+                    alveoli: [
+                        { id: 'alv1', parent: 'secLeftUpper', branchOffset: 80, radius: 30, x: 0, y: 0, // Match parent length
+                          visualColor: 'rgba(255, 200, 200, 0.2)', pulseMagnitude: 5 },
+                        { id: 'alv2', parent: 'secLeftLower', branchOffset: 100, radius: 25, x: 0, y: 0, // Match parent length
+                          visualColor: 'rgba(255, 200, 200, 0.2)', pulseMagnitude: 4 },
+                        { id: 'alv3', parent: 'secRightUpper', branchOffset: 80, radius: 30, x: 0, y: 0, // Match parent length
+                          visualColor: 'rgba(255, 200, 200, 0.2)', pulseMagnitude: 5 },
+                        { id: 'alv4', parent: 'secRightLower', branchOffset: 100, radius: 25, x: 0, y: 0, // Match parent length
+                          visualColor: 'rgba(255, 200, 200, 0.2)', pulseMagnitude: 4 },
+                    ],
+                    // New tissueWalls using Bezier curves
+                    // Adjusted to target a Width:Height ratio closer to 1.7:1 (e.g., 600:350)
+                    tissueWalls: [
+                        {
+                            type: 'bezier',
+                            // Points for the overall lung shape (currently symmetrical)
+                            segments: [
+                                // Top-Right (Apex)
+                                { startX: 400, startY: 250, control1X: 500, control1Y: 150, control2X: 700, control2Y: 200, endX: 750, endY: 300 }, // Y values adjusted, X values expanded
+                                // Right Side (Costal surface)
+                                { startX: 750, startY: 300, control1X: 800, control1Y: 400, control2X: 700, control2Y: 500, endX: 600, endY: 650 }, // Y values adjusted, X values expanded, bottom Y extended
+                                // Bottom-Right (Diaphragmatic base)
+                                { startX: 600, startY: 650, control1X: 500, control1Y: 700, control2X: 450, control2Y: 700, endX: 400, endY: 650 }, // Y values adjusted, X values adjusted, control Y extended
+                                // Bottom-Left (Diaphragmatic base)
+                                { startX: 400, startY: 650, control1X: 350, control1Y: 700, control2X: 300, control2Y: 700, endX: 200, endY: 650 }, // Y values adjusted, X values expanded
+                                // Left Side (Costal surface)
+                                { startX: 200, startY: 650, control1X: 0, control1Y: 500, control2X: 0, control2Y: 400, endX: 50, endY: 300 }, // Y values adjusted, X values expanded
+                                // Top-Left (Apex)
+                                { startX: 50, startY: 300, control1X: 100, control1Y: 200, control2X: 300, control2Y: 150, endX: 400, endY: 250 } // Y values adjusted, X values expanded
+                            ],
+                            visualColor: 'rgba(50, 20, 0, 0.3)', // Semi-transparent fill
+                            strokeColor: 'rgba(100, 50, 0, 0.8)', // Opaque outline
+                            strokeWidth: 5
+                        }
+                    ],
+                },
+                collisionShapes: [],
+                interactiveElements: [
+                    { type: 'damagedAlveoli', x: 150, y: 400, radius: 15, health: 50, visualColor: 'red' },
+                    { type: 'pathogenSpawn', x: 400, y: 100, radius: 20, spawnRate: 5, visualColor: 'yellow' }
+                ],
+            },
+            levelC_beta: {
+                worldWidth: 1200, // Increased worldWidth for horizontal scrolling
+                worldHeight: 1200, // Keep world height for now, adjust lung shape within it
+                initialCuraBotX: 400,
+                initialCuraBotY: 350, // Changed from 250 to 350 to spawn further into trachea
+                organs: [
+                    { name: 'Lung', x: 400, y: 600, radius: 300, health: 100, maxHealth: 100, damageRate: 5, healingRate: 20, drawShape: 'lung', lastHostileWBCSpawn: 0, isDamagedVisual: false, isHealingVisual: false, visualTimer: 0, visualDuration: 0.5 },
+                ],
+                lungStructures: {
+                    trachea: {
+                        id: 'trachea', x: 370, y: 200, width: 90, length: 200, // Increased width from 70 to 90
+                        startX: 0, startY: 0, endX: 0, endY: 0,
+                        visualColor: 'rgba(255, 255, 255, 0.1)',
+                        wallColor: 'rgba(255, 0, 0, 0.8)',
+                    },
+                    bronchi: [
+                        { id: 'mainLeft', parent: 'trachea', branchOffset: 180, length: 200, width: 60, angle: 3 * Math.PI / 4, // Shorter
+                          startX: 0, startY: 0, endX: 0, endY: 0,
+                          visualColor: 'rgba(255, 255, 255, 0.1)' },
+                        { id: 'mainRight', parent: 'trachea', branchOffset: 180, length: 200, width: 60, angle: Math.PI / 4, // Shorter
+                          startX: 0, startY: 0, endX: 0, endY: 0,
+                          visualColor: 'rgba(255, 255, 255, 0.1)' },
+                        { id: 'secLeftUpper', parent: 'mainLeft', branchOffset: 180, length: 80, width: 55, angle: (3 * Math.PI / 4) - Math.PI / 8, // Shorter, adjusted offset
+                          startX: 0, startY: 0, endX: 0, endY: 0,
+                          visualColor: 'rgba(255, 255, 255, 0.1)' },
+                        { id: 'secLeftLower', parent: 'mainLeft', branchOffset: 180, length: 100, width: 55, angle: (3 * Math.PI / 4) + Math.PI / 8, // Shorter, adjusted offset
+                          startX: 0, startY: 0, endX: 0, endY: 0,
+                          visualColor: 'rgba(255, 255, 255, 0.1)' },
+                        { id: 'secRightUpper', parent: 'mainRight', branchOffset: 180, length: 80, width: 55, angle: (Math.PI / 4) - Math.PI / 8, // Shorter, adjusted offset
+                          startX: 0, startY: 0, endX: 0, endY: 0,
+                          visualColor: 'rgba(255, 255, 255, 0.1)' },
+                        { id: 'secRightLower', parent: 'mainRight', branchOffset: 180, length: 100, width: 55, angle: (Math.PI / 4) + Math.PI / 8, // Shorter, adjusted offset
+                          startX: 0, startY: 0, endX: 0, endY: 0,
+                          visualColor: 'rgba(255, 255, 255, 0.1)' },
+                    ],
+                    alveoli: [
+                        { id: 'alv1', parent: 'secLeftUpper', branchOffset: 80, radius: 30, x: 0, y: 0, // Match parent length
+                          visualColor: 'rgba(255, 200, 200, 0.2)', pulseMagnitude: 5 },
+                        { id: 'alv2', parent: 'secLeftLower', branchOffset: 100, radius: 25, x: 0, y: 0, // Match parent length
+                          visualColor: 'rgba(255, 200, 200, 0.2)', pulseMagnitude: 4 },
+                        { id: 'alv3', parent: 'secRightUpper', branchOffset: 80, radius: 30, x: 0, y: 0, // Match parent length
+                          visualColor: 'rgba(255, 200, 200, 0.2)', pulseMagnitude: 5 },
+                        { id: 'alv4', parent: 'secRightLower', branchOffset: 100, radius: 25, x: 0, y: 0, // Match parent length
+                          visualColor: 'rgba(255, 200, 200, 0.2)', pulseMagnitude: 4 },
+                    ],
+                    // New tissueWalls using Bezier curves
+                    // Adjusted to target a Width:Height ratio closer to 1.7:1 (e.g., 600:350)
+                    tissueWalls: [
+                        {
+                            type: 'bezier',
+                            // Points for the overall lung shape (currently symmetrical)
+                            segments: [
+                                // Top-Right (Apex) - Slightly adjusted Y
+                                { startX: 400, startY: 250, control1X: 500, control1Y: 160, control2X: 700, control2Y: 210, endX: 750, endY: 300 },
+                                // Right Side (Costal surface)
+                                { startX: 750, startY: 300, control1X: 800, control1Y: 400, control2X: 700, control2Y: 500, endX: 600, endY: 650 },
+                                // Bottom-Right (Diaphragmatic base)
+                                { startX: 600, startY: 650, control1X: 500, control1Y: 700, control2X: 450, control2Y: 700, endX: 400, endY: 650 },
+                                // Bottom-Left (Diaphragmatic base)
+                                { startX: 400, startY: 650, control1X: 350, control1Y: 700, control2X: 300, control2Y: 700, endX: 200, endY: 650 },
+                                // Left Side (Costal surface)
+                                { startX: 200, startY: 650, control1X: 0, control1Y: 500, control2X: 0, control2Y: 400, endX: 50, endY: 300 },
+                                // Top-Left (Apex)
+                                { startX: 50, startY: 300, control1X: 100, control1Y: 200, control2X: 300, control2Y: 150, endX: 400, endY: 250 }
+                            ],
+                            visualColor: 'rgba(50, 20, 0, 0.3)', // Semi-transparent fill
+                            strokeColor: 'rgba(100, 50, 0, 0.8)', // Opaque outline
+                            strokeWidth: 5
+                        }
+                    ],
+                },
+                collisionShapes: [],
+                interactiveElements: [
+                    { type: 'damagedAlveoli', x: 150, y: 400, radius: 15, health: 50, visualColor: 'red' },
+                    { type: 'pathogenSpawn', x: 400, y: 100, radius: 20, spawnRate: 5, visualColor: 'yellow' }
+                ],
+            }
+        };
+
+        let currentLevelName = 'levelC_beta'; // Default starting level changed to Level C Beta
+        let currentLevelConfig = levelConfigurations[currentLevelName];
+
+        // Input handling
+        const keys = {
+            ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false,
+            KeyW: false, KeyS: false, KeyA: false, KeyD: false,
+            Digit1: false, Digit2: false, Digit3: false, Digit4: false, // Added Digit4 for new tool
+            Space: false,
+            KeyP: false,
+            ShiftLeft: false,
+            KeyEql: false, // For '+'
+            Minus: false, // For '-'
+        };
+
+        // Game state variables
+        let gameState = 'start'; // 'start', 'playing', 'gameOver', 'win', 'debugMenu', 'levelSelect', 'bezierEdit'
+        let lastTime = 0;
+        const GAME_SPEED = 1; // Factor to control overall game speed
+        let vesselPulseTimer = 0; // For blood vessel pulsing
+        const VESSEL_PULSE_SPEED = 5; // How fast the pulse animation is
+        const VESSEL_PULSE_MAGNITUDE = 2; // How much the line width changes
+        let isPaused = false; // Pause state
+
+        // Debug settings
+        let showOrganLabels = false; // Default off
+        let infiniteEnergy = false; // Default off
+        let showDetailedLungOutline = false; // New debug flag for Level C outlines
+        let collidedSegment = null; // Stores a dummy segment for visual feedback on collision
+        let collisionVisualTimer = 0; // Timer for how long the collision visual lasts
+        const COLLISION_VISUAL_DURATION = 0.2; // Duration in seconds
+        const EPSILON = 0.01; // Small tolerance for floating point comparisons in collision
+        const PLEURA_BUFFER_ZONE = 40; // Distance around pleura where resistive effect applies
+
+        // Bezier Editor specific variables
+        let selectedBezierPoint = null; // { wallIndex: number, segmentIndex: number, pointType: 'startX'|'startY'|'endX'|'endY'|'control1X'|'control1Y'|'control2X'|'control2Y' }
+        const BEZIER_HANDLE_RADIUS = 8; // Radius for clicking/drawing bezier handles (in world units)
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+
+        // Player (CuraBot) properties
+        const curabot = {
+            x: 0, // Will be set by loadLevel
+            y: 0, // Will be set by loadLevel
+            radius: 12.75,
+            normalSpeed: 150,
+            pathwaySpeedMultiplier: 1.5, // New: Speed multiplier when in pathways
+            tissueSpeedMultiplier: 0.5,  // New: Speed multiplier when in tissue
+            turboSpeedMultiplier: 1.5,
+            currentSpeed: 150,
+            accelerationRate: 300,
+            energy: 100,
+            maxEnergy: 100,
+            stationaryEnergyDrainRate: 0.1,
+            movingEnergyDrainRate: 2,
+            turboEnergyDrainRate: 5,
+            currentEnergyDrainRate: 0.1,
+            tools: ['Standard Pulse', 'Antiviral Agent Spray', 'Cellular Repair Nanites', 'Teleport'], // Added Teleport
+            currentToolIndex: 0,
+            color: '#63b3ed',
+            damageCooldown: 0.5,
+            lastDamageTime: 0,
+            rotation: 0,
+            pulseCooldown: 0.3,
+            lastPulseTime: 0,
+            pulseEnergyCost: 0.5,
+            sprayCooldown: 1.0,
+            lastSprayTime: 0,
+            repairNaniteEnergyCost: 5,
+            repairNaniteDuration: 0.5,
+            lastRepairTime: 0,
+            isRepairing: false,
+            repairRate: 40,
+            toolVisualDuration: 0.15,
+            toolVisualTimer: 0,
+            isToolActiveVisual: false,
+            teleportCooldown: 2.0, // Cooldown for teleport
+            lastTeleportTime: 0,
+            teleportEnergyCost: 10, // Energy cost for teleport
+            teleportDistance: 100, // Distance to teleport
+        };
+
+        // Arrays for game entities
+        let pathogens = [];
+        let projectiles = [];
+        let sprays = [];
+        let whiteBloodCells = [];
+
+        const MAX_PATHOGENS = 10;
+        const PATHOGEN_SPAWN_INTERVAL = 3;
+        const MAX_FRIENDLY_WBCS = 5;
+        const FRIENDLY_WBC_SPAWN_INTERVAL = 5;
+        const MAX_HOSTILE_WBCS_PER_ORGAN = 2;
+        const HOSTILE_WBC_SPAWN_COOLDOWN = 5;
+
+        // --- Web Audio API Setup ---
+        let audioContext = null;
+        let masterGainNode = null;
+        let isMuted = false;
+
+        // Get DOM elements
+        const energyBar = document.getElementById('energyBar');
+        const currentToolDisplay = document.getElementById('currentTool');
+        const organHealthBarsContainer = document.getElementById('organHealthBarsContainer');
+        const gameOverlay = document.getElementById('gameOverlay');
+        const overlayMessage = document.getElementById('overlayMessage');
+        const startButton = document.getElementById('startButton');
+        const debugMenuButton = document.getElementById('debugMenuButton');
+        const restartButton = document.getElementById('restartButton');
+        const returnToMainMenuButton = document.getElementById('returnToMainMenuButton');
+        const debugMenuOverlay = document.getElementById('debugMenuOverlay');
+        const debugMenuTitle = document.getElementById('debugMenuTitle');
+        const debugOptions = document.getElementById('debugOptions');
+        const organLabelsToggle = document.getElementById('organLabelsToggle');
+        const infiniteEnergyToggle = document.getElementById('infiniteEnergyToggle');
+        const detailedLungOutlineToggle = document.getElementById('detailedLungOutlineToggle');
+        const exportBezierOption = document.getElementById('exportBezierOption'); // Get the new div
+        const exportBezierButton = document.getElementById('exportBezierButton'); // Get the new button
+        const levelSelectButton = document.getElementById('levelSelectButton');
+        const levelAButton = document.getElementById('levelAButton');
+        const levelBButton = document.getElementById('levelBButton');
+        const levelCButton = document.getElementById('levelCButton');
+        const levelCBetaButton = document.getElementById('levelCBetaButton'); // New button for Level C Beta
+        const backToDebugMenuButton = document.getElementById('backToDebugMenuButton');
+        const backToMainMenuFromDebugButton = document.getElementById('backToMainMenuFromDebugButton');
+        const soundToggleButton = document.getElementById('soundToggleButton');
+        const testSoundsButton = document.getElementById('testSoundsButton'); // New button reference
+        const exitGameButton = document.getElementById('exitGameButton'); // New Exit Game button reference
+
+
+        /**
+         * Ensures the AudioContext is initialized and running.
+         * This must be called on a user gesture to bypass browser autoplay policies.
+         */
+        async function ensureAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                masterGainNode = audioContext.createGain();
+                masterGainNode.connect(audioContext.destination);
+                masterGainNode.gain.value = isMuted ? 0 : 0.3; // Set master volume to 0.3 (quieter)
+            }
+            if (audioContext.state === 'suspended') {
+                try {
+                    await audioContext.resume();
+                } catch (error) {
+                    console.error("Failed to resume AudioContext:", error);
+                    // Optionally, show a message to the user that audio couldn't start
+                }
+            }
+        }
+
+        /**
+         * Plays a sound effect using native Web Audio API.
+         * @param {string} type - The type of sound to play ('pulse', 'spray', 'destroy', 'damage', 'repair_placeholder', 'teleport').
+         */
+        function playSound(type) {
+            if (!audioContext || audioContext.state !== 'running' || isMuted) {
+                return;
+            }
+
+            const now = audioContext.currentTime;
+            let oscillator, gainNode, noiseBuffer, source;
+
+            try {
+                switch (type) {
+                    case 'pulse':
+                        oscillator = audioContext.createOscillator();
+                        gainNode = audioContext.createGain();
+
+                        oscillator.type = 'sine';
+                        oscillator.frequency.setValueAtTime(261.63, now); // C4
+                        gainNode.gain.setValueAtTime(0, now);
+                        gainNode.gain.linearRampToValueAtTime(0.5, now + 0.005); // Attack
+                        gainNode.gain.linearRampToValueAtTime(0, now + 0.1); // Decay/Release
+
+                        oscillator.connect(gainNode);
+                        gainNode.connect(masterGainNode);
+                        oscillator.start(now);
+                        oscillator.stop(now + 0.1);
+                        break;
+
+                    case 'spray':
+                        noiseBuffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.2, audioContext.sampleRate);
+                        const output = noiseBuffer.getChannelData(0);
+                        for (let i = 0; i < noiseBuffer.length; i++) {
+                            output[i] = Math.random() * 2 - 1; // White noise
+                        }
+
+                        source = audioContext.createBufferSource();
+                        source.buffer = noiseBuffer;
+                        gainNode = audioContext.createGain();
+
+                        gainNode.gain.setValueAtTime(0, now);
+                        gainNode.gain.linearRampToValueAtTime(0.3, now + 0.01); // Attack
+                        gainNode.gain.linearRampToValueAtTime(0, now + 0.2); // Decay/Release
+
+                        source.connect(gainNode);
+                        gainNode.connect(masterGainNode);
+                        source.start(now);
+                        source.stop(now + 0.2);
+                        break;
+
+                    case 'destroy':
+                        oscillator = audioContext.createOscillator();
+                        gainNode = audioContext.createGain();
+
+                        oscillator.type = 'triangle'; // Membrane-like sound
+                        oscillator.frequency.setValueAtTime(60, now); // Low frequency
+                        oscillator.frequency.exponentialRampToValueAtTime(30, now + 0.4); // Pitch decay
+
+                        gainNode.gain.setValueAtTime(0, now);
+                        gainNode.gain.linearRampToValueAtTime(0.8, now + 0.001); // Attack
+                        gainNode.gain.linearRampToValueAtTime(0, now + 0.4); // Decay/Release
+
+                        oscillator.connect(gainNode);
+                        gainNode.connect(masterGainNode);
+                        oscillator.start(now);
+                        oscillator.stop(now + 0.4);
+                        break;
+
+                    case 'damage':
+                        oscillator = audioContext.createOscillator();
+                        gainNode = audioContext.createGain();
+
+                        oscillator.type = 'sawtooth';
+                        oscillator.frequency.setValueAtTime(185.00, now); // F#2
+                        gainNode.gain.setValueAtTime(0, now);
+                        gainNode.gain.linearRampToValueAtTime(0.6, now + 0.001); // Attack
+                        gainNode.gain.linearRampToValueAtTime(0, now + 0.2); // Decay/Release
+
+                        oscillator.connect(gainNode);
+                        gainNode.connect(masterGainNode);
+                        oscillator.start(now);
+                        oscillator.stop(now + 0.2);
+                        break;
+
+                    case 'repair_placeholder':
+                        oscillator = audioContext.createOscillator();
+                        gainNode = audioContext.createGain();
+
+                        oscillator.type = 'square';
+                        oscillator.frequency.setValueAtTime(783.99, now); // G5
+                        gainNode.gain.setValueAtTime(0, now);
+                        gainNode.gain.linearRampToValueAtTime(0.4, now + 0.01); // Attack
+                        gainNode.gain.linearRampToValueAtTime(0, now + 0.2); // Decay/Release
+
+                        oscillator.connect(gainNode);
+                        gainNode.connect(masterGainNode);
+                        oscillator.start(now);
+                        oscillator.stop(now + 0.2);
+                        break;
+
+                    case 'teleport':
+                        oscillator = audioContext.createOscillator();
+                        gainNode = audioContext.createGain();
+
+                        oscillator.type = 'triangle';
+                        oscillator.frequency.setValueAtTime(659.25, now); // E5
+                        gainNode.gain.setValueAtTime(0, now);
+                        gainNode.gain.linearRampToValueAtTime(0.7, now + 0.001); // Attack
+                        gainNode.gain.linearRampToValueAtTime(0, now + 0.3); // Decay/Release
+
+                        oscillator.connect(gainNode);
+                        gainNode.connect(masterGainNode);
+                        oscillator.start(now);
+                        oscillator.stop(now + 0.3);
+                        break;
+
+                    default: /* console.warn(`playSound: Unknown sound type: ${type}`); */ // Debug log removed
+                }
+            } catch (e) {
+                console.error("playSound: Caught error triggering sound for type:", type, "Error:", e);
+            }
+        }
+
+        /**
+         * Function to test all sounds.
+         */
+        async function testAllSounds() {
+            await ensureAudioContext(); // Ensure context is running
+            
+            // Now that context is running, play sounds
+            playSound('pulse');
+            setTimeout(() => playSound('spray'), 500);
+            setTimeout(() => playSound('repair_placeholder'), 1000);
+            setTimeout(() => playSound('destroy'), 1500);
+            setTimeout(() => playSound('damage'), 2000);
+            setTimeout(() => playSound('teleport'), 2500);
+        }
+
+
+        // --- Game Utility Functions ---
+        function clamp(value, min, max) { return Math.max(min, Math.min(value, max)); }
+        function distance(x1, y1, x2, y2) { const dx = x2 - x1; const dy = y2 - y1; return Math.sqrt(dx * dx + dy * dy); }
+        function checkCircleCollision(c1, c2) { return distance(c1.x, c1.y, c2.x, c2.y) < (c1.radius + c2.radius); }
+
+        // Helper function to calculate end point of a line segment given start, length, and angle
+        function getEndPoint(startX, startY, length, angle) {
+            return {
+                x: startX + length * Math.cos(angle),
+                y: startY + length * Math.sin(angle)
+            };
+        }
+
+        // Line Segment Intersection Detection Functions
+        function onSegment(p, q, r) {
+            if (q.x <= Math.max(p.x, r.x) + EPSILON && q.x >= Math.min(p.x, r.x) - EPSILON &&
+                q.y <= Math.max(p.y, r.y) + EPSILON && q.y >= Math.min(p.y, r.y) - EPSILON) { return true; }
+            return false;
+        }
+        function orientation(p, q, r) {
+            const val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - r.y);
+            if (Math.abs(val) < EPSILON) return 0;
+            return (val > 0) ? 1 : 2;
+        }
+        function doLineSegmentsIntersect(p1, q1, p2, q2) {
+            const o1 = orientation(p1, q1, p2);
+            const o2 = orientation(p1, q1, q2);
+            const o3 = orientation(p2, q2, p1);
+            const o4 = orientation(p2, q2, q1);
+            if (o1 !== 0 && o2 !== 0 && o3 !== 0 && o4 !== 0 && o1 !== o2 && o3 !== o4) { return true; }
+            if (o1 === 0 && onSegment(p1, p2, q1)) return true;
+            if (o2 === 0 && onSegment(p1, q2, q1)) return true;
+            if (o3 === 0 && onSegment(p2, p1, q2)) return true;
+            if (o4 === 0 && onSegment(p2, q1, q2)) return true;
+            return false;
+        }
+
+        let intersectingSegments = []; // Global variable for debugging
+        function checkSmallIntestineOverlap(pathPoints, tubeWidth) {
+            intersectingSegments = [];
+            let overlapFound = false;
+            const segments1 = [];
+            const segments2 = [];
+
+            for (let i = 0; i < pathPoints.length - 1; i++) {
+                const p1 = pathPoints[i];
+                const p2 = pathPoints[i + 1];
+                const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+                const perpAngle = angle + Math.PI / 2;
+                segments1.push({ p1: { x: p1.x + tubeWidth * Math.cos(perpAngle), y: p1.y + tubeWidth * Math.sin(perpAngle) }, p2: { x: p2.x + tubeWidth * Math.cos(perpAngle), y: p2.y + tubeWidth * Math.sin(perpAngle) } });
+                segments2.push({ p1: { x: p1.x - tubeWidth * Math.cos(perpAngle), y: p1.y - tubeWidth * Math.sin(perpAngle) }, p2: { x: p2.x - tubeWidth * Math.cos(perpAngle), y: p2.y - tubeWidth * Math.sin(perpAngle) } });
+            }
+
+            for (let i = 0; i < segments1.length; i++) {
+                for (let j = i + 2; j < segments1.length; j++) {
+                    if (doLineSegmentsIntersect(segments1[i].p1, segments1[i].p2, segments1[j].p1, segments1[j].p2)) {
+                        intersectingSegments.push(segments1[i], segments1[j]);
+                        overlapFound = true;
+                    }
+                }
+            }
+            for (let i = 0; i < segments2.length; i++) {
+                for (let j = i + 2; j < segments2.length; j++) {
+                    if (doLineSegmentsIntersect(segments2[i].p1, segments2[i].p2, segments2[j].p1, segments2[j].p2)) {
+                        intersectingSegments.push(segments2[i], segments2[j]);
+                        overlapFound = true;
+                    }
+                }
+            }
+            for (let i = 0; i < segments1.length; i++) {
+                for (let j = 0; j < segments2.length; j++) {
+                    if (i === j) continue;
+                    if (doLineSegmentsIntersect(segments1[i].p1, segments1[i].p2, segments2[j].p1, segments2[j].p2)) {
+                        intersectingSegments.push(segments1[i], segments2[j]);
+                        overlapFound = true;
+                    }
+                }
+            }
+            return overlapFound;
+        }
+
+
+        // --- Pathogen Classes ---
+        class Pathogen {
+            constructor(x, y, type, color, radius, speed, health, damage) {
+                this.x = x; this.y = y; this.type = type; this.color = color;
+                this.radius = radius; this.speed = speed; this.health = health;
+                this.maxHealth = health; this.damage = damage; this.markedForRemoval = false;
+            }
+            draw() {
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color; ctx.fill();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'; ctx.lineWidth = 1; ctx.stroke();
+                ctx.closePath();
+            }
+            update(deltaTime) { /* Default update */ }
+            takeDamage(amount) {
+                this.health -= amount;
+                if (this.health <= 0) { this.markedForRemoval = true; playSound('destroy'); }
+            }
+        }
+
+        class ViralSwarm extends Pathogen {
+            constructor(x, y) { super(x, y, 'virus', '#ff0000', 10, 80, 10, 5); this.targetX = x; this.targetY = y; this.wanderTimer = 0; this.wanderInterval = 1; }
+            update(deltaTime) {
+                this.wanderTimer += deltaTime;
+                if (this.wanderTimer >= this.wanderInterval) {
+                    this.targetX = Math.random() * currentLevelConfig.worldWidth;
+                    this.targetY = Math.random() * currentLevelConfig.worldHeight;
+                    this.wanderTimer = 0;
+                }
+                const angle = Math.atan2(this.targetY - this.y, this.targetX - this.x);
+                this.x += Math.cos(angle) * this.speed * deltaTime;
+                this.y += Math.sin(angle) * this.speed * deltaTime;
+                this.x = clamp(this.x, this.radius, currentLevelConfig.worldWidth - this.radius);
+                this.y = clamp(this.y, this.radius, currentLevelConfig.worldHeight - this.radius);
+            }
+        }
+
+        class BacterialColony extends Pathogen {
+            constructor(x, y) { super(x, y, 'bacteria', '#8b4513', 20, 40, 30, 10); this.directionX = Math.random() < 0.5 ? 1 : -1; this.directionY = Math.random() < 0.5 ? 1 : -1; this.changeDirectionTimer = 0; this.changeDirectionInterval = 2; }
+            update(deltaTime) {
+                this.changeDirectionTimer += deltaTime;
+                if (this.changeDirectionTimer >= this.changeDirectionInterval) {
+                    this.directionX = Math.random() < 0.5 ? 1 : -1;
+                    this.directionY = Math.random() < 0.5 ? 1 : -1;
+                    this.changeDirectionTimer = 0;
+                }
+                this.x += this.directionX * this.speed * deltaTime;
+                this.y += this.directionY * this.speed * deltaTime;
+                if (this.x - this.radius < 0 || this.x + this.radius > currentLevelConfig.worldWidth) { this.x = clamp(this.x, this.radius, currentLevelConfig.worldWidth - this.radius); this.directionX *= -1; }
+                if (this.y - this.radius < 0 || this.y + this.radius > currentLevelConfig.worldHeight) { this.y = clamp(this.y, this.radius, currentLevelConfig.worldHeight - this.radius); this.directionY *= -1; }
+            }
+        }
+
+        class ToxicBuildup extends Pathogen {
+            constructor(x, y) { super(x, y, 'toxic', 'rgba(0, 255, 0, 0.4)', 30, 0, 50, 1); }
+            update(deltaTime) { /* Static */ }
+            draw() {
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color; ctx.fill(); ctx.closePath();
+            }
+        }
+
+        function spawnPathogen() {
+            if (pathogens.length >= MAX_PATHOGENS) return;
+            const type = Math.floor(Math.random() * 3);
+            let newPathogen;
+            const spawnX = Math.random() * currentLevelConfig.worldWidth;
+            const spawnY = Math.random() * currentLevelConfig.worldHeight;
+            switch (type) {
+                case 0: newPathogen = new ViralSwarm(spawnX, spawnY); break;
+                case 1: newPathogen = new BacterialColony(spawnX, spawnY); break;
+                case 2: newPathogen = new ToxicBuildup(spawnX, spawnY); break;
+            }
+            pathogens.push(newPathogen);
+        }
+
+        let pathogenSpawnTimer = 0;
+        let friendlyWBCSpawnTimer = 0;
+
+        // --- Projectile Class (for Standard Pulse) ---
+        class Projectile {
+            constructor(x, y, targetX, targetY, speed, damage, color, radius) {
+                this.x = x; this.y = y; this.speed = speed; this.damage = damage;
+                this.color = color; this.radius = radius; this.markedForRemoval = false;
+                const angle = Math.atan2(targetY - y, targetX - x);
+                this.dx = Math.cos(angle) * this.speed; this.dy = Math.sin(angle) * this.speed;
+            }
+            update(deltaTime) {
+                this.x += this.dx * deltaTime; this.y += this.dy * deltaTime;
+                if (this.x < -this.radius || this.x > currentLevelConfig.worldWidth + this.radius ||
+                    this.y < -this.radius || this.y > currentLevelConfig.worldHeight + this.radius) { this.markedForRemoval = true; }
+            }
+            draw() {
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color; ctx.fill(); ctx.closePath();
+            }
+        }
+
+        // --- Spray Class (for Antiviral Agent Spray and Cellular Repair Nanites visual) ---
+        class Spray {
+            constructor(x, y, initialRadius, maxRadius, duration, color, type, damage = 0) { // Added damage parameter
+                this.x = x; this.y = y; this.initialRadius = initialRadius;
+                this.currentRadius = initialRadius; this.maxRadius = maxRadius;
+                this.duration = duration; this.color = color; this.type = type;
+                this.elapsedTime = 0; this.markedForRemoval = false;
+                this.damage = damage; // Store damage
+            }
+            update(deltaTime) {
+                this.elapsedTime += deltaTime;
+                if (this.elapsedTime >= this.duration) { this.markedForRemoval = true; }
+                else { this.currentRadius = this.initialRadius + (this.maxRadius - this.initialRadius) * (this.elapsedTime / this.duration); }
+            }
+            draw() {
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.currentRadius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color; ctx.fill(); ctx.closePath();
+            }
+        }
+
+        // --- White Blood Cell Class ---
+        class WhiteBloodCell {
+            constructor(x, y, behavior, targetEntity = null) {
+                this.x = x; this.y = y; this.radius = 12;
+                this.speed = behavior === 'friendly' ? 60 : 100;
+                this.color = behavior === 'friendly' ? '#a0a0ff' : '#ff8080';
+                this.behavior = behavior; this.health = behavior === 'friendly' ? 20 : 40;
+                this.damage = behavior === 'friendly' ? 0 : 10; this.markedForRemoval = false;
+                this.targetEntity = targetEntity; this.attackCooldown = 1.0; this.lastAttackTime = 0;
+                this.wanderTimer = 0; this.wanderInterval = 2; this.wanderTargetX = x; this.wanderTargetY = y;
+            }
+            draw() {
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color; ctx.fill();
+                ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke(); ctx.closePath();
+                ctx.fillStyle = '#000000'; ctx.font = '10px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(this.behavior === 'friendly' ? 'F' : 'H', this.x, this.y);
+            }
+            update(deltaTime, pathogens, curabot, currentTime) {
+                if (this.behavior === 'friendly') {
+                    let closestPathogen = null; let minDistance = Infinity;
+                    pathogens.forEach(p => { const dist = distance(this.x, this.y, p.x, p.y); if (dist < minDistance) { minDistance = dist; closestPathogen = p; } });
+                    if (closestPathogen && minDistance < 200) { this.targetEntity = closestPathogen; } else { this.targetEntity = null; }
+                    if (this.targetEntity) {
+                        const angle = Math.atan2(this.targetEntity.y - this.y, this.targetEntity.x - this.x);
+                        this.x += Math.cos(angle) * this.speed * deltaTime;
+                        this.y += Math.sin(angle) * this.speed * deltaTime;
+                        if (checkCircleCollision(this, this.targetEntity) && currentTime - this.lastAttackTime > this.attackCooldown) {
+                            this.targetEntity.takeDamage(5); this.lastAttackTime = currentTime;
+                        }
+                    } else {
+                        this.wanderTimer += deltaTime;
+                        if (this.wanderTimer >= this.wanderInterval) {
+                            this.wanderTargetX = Math.random() * currentLevelConfig.worldWidth;
+                            this.wanderTargetY = Math.random() * currentLevelConfig.worldHeight;
+                            this.wanderTimer = 0;
+                        }
+                        const angle = Math.atan2(this.wanderTargetY - this.y, this.wanderTargetX - this.x);
+                        this.x += Math.cos(angle) * this.speed * deltaTime;
+                        this.y += Math.sin(angle) * this.speed * deltaTime;
+                    }
+                } else {
+                    this.targetEntity = curabot;
+                    const angle = Math.atan2(this.targetEntity.y - this.y, this.targetEntity.x - this.x);
+                    this.x += Math.cos(angle) * this.speed * deltaTime;
+                    this.y += Math.sin(angle) * this.speed * deltaTime;
+                    this.x = clamp(this.x, this.radius, currentLevelConfig.worldWidth - this.radius);
+                    this.y = clamp(this.y, this.radius, currentLevelConfig.worldHeight - this.radius);
+                }
+                this.x = clamp(this.x, this.radius, currentLevelConfig.worldWidth - this.radius);
+                this.y = clamp(this.y, this.radius, currentLevelConfig.worldHeight - this.radius);
+            }
+            takeDamage(amount) { this.health -= amount; if (this.health <= 0) { this.markedForRemoval = true; } }
+        }
+
+        function spawnFriendlyWBC() {
+            if (whiteBloodCells.filter(wbc => wbc.behavior === 'friendly').length >= MAX_FRIENDLY_WBCS) return;
+            const spawnX = Math.random() * currentLevelConfig.worldWidth;
+            const spawnY = Math.random() * currentLevelConfig.worldHeight;
+            whiteBloodCells.push(new WhiteBloodCell(spawnX, spawnY, 'friendly'));
+        }
+
+        function spawnHostileWBC(organ) {
+            const currentHostileWBCs = whiteBloodCells.filter(wbc => wbc.behavior === 'hostile');
+            if (currentHostileWBCs.length >= MAX_HOSTILE_WBCS_PER_ORGAN * currentLevelConfig.organs.length) return;
+            const spawnX = organ.x + (Math.random() - 0.5) * organ.radius * 2;
+            const spawnY = organ.y + (Math.random() - 0.5) * organ.radius * 2;
+            whiteBloodCells.push(new WhiteBloodCell(spawnX, spawnY, 'hostile', curabot));
+        }
+
+        /**
+         * Finds the closest point on a line segment to a given point, and returns its squared distance.
+         * @param {object} p - The point {x, y}.
+         * @param {object} a - The first endpoint of the segment {x, y}.
+         * @param {object} b - The second endpoint of the segment {x, y}.
+         * @returns {object} An object with { sqDist: number, closestX: number, closestY: number }.
+         */
+        function getClosestPointAndSqDist(p, a, b) {
+            const l2 = (b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y);
+            if (l2 === 0) {
+                // Segment is a point, closest point is 'a'
+                return {
+                    sqDist: (p.x - a.x) * (p.x - a.x) + (p.y - a.y) * (p.y - a.y),
+                    closestX: a.x,
+                    closestY: a.y
+                };
+            }
+
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+
+            let t = 0;
+            // The 'lengthSq' variable was not defined in this scope, causing an error.
+            // It should be 'l2' which is the squared length of the segment.
+            if (l2 !== 0) { // Changed lengthSq to l2
+                t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2; // Changed lengthSq to l2
+                t = Math.max(0, Math.min(1, t)); // Clamp t to [0, 1] for segment
+            }
+
+            const closestX = a.x + t * dx;
+            const closestY = a.y + t * dy;
+
+            return {
+                sqDist: (p.x - closestX) * (p.x - closestX) + (p.y - closestY) * (p.y - closestY),
+                closestX: closestX,
+                closestY: closestY
+            };
+        }
+
+        /**
+         * Checks if a point (with a given radius) is within the "safe zone" of a tube.
+         * The safe zone is the area where the point can be without colliding with the tube's inner walls.
+         * @param {object} point - The point object {x, y, radius}.
+         * @param {object} tube - The tube object {startX, startY, endX, endY, width}.
+         * @returns {boolean} True if within safe zone, false otherwise.
+         */
+        function isInsideTubeSafeZone(point, tube) {
+            const dx = tube.endX - tube.startX;
+            const dy = tube.endY - tube.startY;
+            const lengthSq = dx * dx + dy * dy;
+
+            let t = 0;
+            if (lengthSq !== 0) {
+                t = ((point.x - tube.startX) * dx + (point.y - tube.startY) * dy) / lengthSq;
+                t = Math.max(0, Math.min(1, t)); // Clamp t to [0, 1] for segment
+            }
+
+            const closestX = tube.startX + t * dx;
+            const closestY = tube.startY + t * dy;
+
+            const distToCenterline = distance(point.x, point.y, closestX, closestY);
+            // Calculate the safe radius, which is the tube's half-width minus the CuraBot's radius.
+            // This is the maximum distance the CuraBot's center can be from the tube's centerline
+            // without its edge touching the tube's internal wall.
+            const safeRadius = (tube.width / 2) - point.radius;
+
+            // A point is inside the safe zone if the safeRadius is positive (meaning the tube is wide enough for the point)
+            // AND the distance from the point's center to the tube's centerline is less than or equal to the safeRadius (plus a small epsilon for floating point tolerance).
+            return safeRadius > 0 && distToCenterline <= safeRadius + EPSILON;
+        }
+
+        /**
+         * Checks if the CuraBot is currently inside any of the defined lung pathways (trachea or bronchi).
+         * @param {number} x - CuraBot's x-coordinate.
+         * @param {number} y - CuraBot's y-coordinate.
+         * @param {number} radius - CuraBot's radius.
+         * @returns {boolean} True if inside a pathway, false otherwise.
+         */
+        function isInsidePathway(x, y, radius) {
+            const { trachea, bronchi } = currentLevelConfig.lungStructures;
+            const curabotPoint = { x: x, y: y, radius: radius };
+
+            if (isInsideTubeSafeZone(curabotPoint, trachea)) {
+                return true;
+            }
+            for (const bronchus of bronchi) {
+                if (isInsideTubeSafeZone(curabotPoint, bronchus)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /**
+         * Checks if a point is outside the main lung pleura boundary (Bezier curve).
+         * @param {number} x - The x-coordinate to check.
+         * @param {number} y - The y-coordinate to check.
+         * @returns {boolean} True if outside the pleura, false if inside.
+         */
+        function isOutsidePleura(x, y) {
+            const tissueWall = currentLevelConfig.lungStructures.tissueWalls[0]; // Assuming one main outer boundary
+            if (!tissueWall || tissueWall.type !== 'bezier' || !tissueWall.segments || tissueWall.segments.length === 0) {
+                return false; // No bezier pleura defined, so not outside it.
+            }
+
+            ctx.save(); // Save the current canvas state
+            ctx.beginPath();
+            ctx.moveTo(tissueWall.segments[0].startX, tissueWall.segments[0].startY);
+            tissueWall.segments.forEach(segment => {
+                ctx.bezierCurveTo(segment.control1X, segment.control1Y, segment.control2X, segment.control2Y, segment.endX, segment.endY);
+            });
+            ctx.closePath(); // Close the path to form a complete shape
+
+            // Check if the point is *not* in the path (i.e., outside)
+            const result = !ctx.isPointInPath(x, y);
+            ctx.restore(); // Restore the canvas state
+            return result;
+        }
+
+        /**
+         * Checks if CuraBot is near the pleura boundary (within PLEURA_BUFFER_ZONE).
+         * @param {number} x - CuraBot's x-coordinate.
+         * @param {number} y - CuraBot's y-coordinate.
+         * @param {number} radius - CuraBot's radius.
+         * @returns {boolean} True if near the pleura boundary, false otherwise.
+         */
+        function isNearPleuraBoundary(x, y, radius) {
+            const tissueWall = currentLevelConfig.lungStructures.tissueWalls[0];
+            if (!tissueWall || tissueWall.type !== 'bezier' || !tissueWall.segments || tissueWall.segments.length === 0) {
+                return false;
+            }
+
+            const flattenedSegments = getFlattenedBezierSegments(tissueWall.segments, 100); // More subdivisions for accuracy
+            let minSqDist = Infinity;
+
+            for (const segment of flattenedSegments) {
+                const result = getClosestPointAndSqDist({ x: x, y: y }, segment.p1, segment.p2);
+                if (result.sqDist < minSqDist) {
+                    minSqDist = result.sqDist;
+                }
+            }
+
+            const distToBoundary = Math.sqrt(minSqDist);
+            
+            // If CuraBot is within this buffer zone of the pleura (either just inside or just outside)
+            return distToBoundary < radius + PLEURA_BUFFER_ZONE;
+        }
+
+
+        /**
+         * Updates the CuraBot's position based on input.
+         * @param {number} deltaTime - Time elapsed since last frame in seconds.
+         */
+        function updateCuraBot(deltaTime) {
+            if (gameState !== 'playing' || isPaused) { return; }
+
+            let targetSpeed = curabot.normalSpeed;
+            let currentEnergyDrainRate = curabot.stationaryEnergyDrainRate; // Default drain rate
+
+            if (currentLevelName === 'levelC_beta' || currentLevelName === 'levelC') { // Apply lung-specific rules to both
+                const curabotInsidePleura = !isOutsidePleura(curabot.x, curabot.y);
+                const curabotNearPleura = isNearPleuraBoundary(curabot.x, curabot.y, curabot.radius);
+                const curabotInPathway = isInsidePathway(curabot.x, curabot.y, curabot.radius);
+
+                if (curabotInPathway) { // Priority 1: In a defined pathway (trachea/bronchi)
+                    targetSpeed = curabot.normalSpeed * curabot.pathwaySpeedMultiplier;
+                    currentEnergyDrainRate = curabot.movingEnergyDrainRate;
+                } else if (curabotNearPleura) { // Priority 2: Near the pleura boundary (resistive zone)
+                    targetSpeed = curabot.normalSpeed * 0.1; // Resistive speed
+                    currentEnergyDrainRate = curabot.turboEnergyDrainRate * 2; // High drain
+                } else if (curabotInsidePleura) { // Priority 3: Inside lung tissue (not pathway, not near pleura)
+                    targetSpeed = curabot.normalSpeed * curabot.tissueSpeedMultiplier;
+                    currentEnergyDrainRate = curabot.movingEnergyDrainRate;
+                } else { // Priority 4: Well outside the pleura (chest cavity)
+                    targetSpeed = curabot.normalSpeed; // Normal speed
+                    currentEnergyDrainRate = curabot.movingEnergyDrainRate; // Normal drain
+                }
+            } else { // For level A/B, default rules apply
+                targetSpeed = curabot.normalSpeed;
+                currentEnergyDrainRate = curabot.movingEnergyDrainRate;
+            }
+
+            // Apply turbo if active (this will multiply the determined targetSpeed)
+            if (keys.ShiftLeft) { targetSpeed *= curabot.turboSpeedMultiplier; }
+
+            // Smoothly adjust current speed towards target speed
+            if (curabot.currentSpeed < targetSpeed) { curabot.currentSpeed = Math.min(targetSpeed, curabot.currentSpeed + curabot.accelerationRate * deltaTime); }
+            else if (curabot.currentSpeed > targetSpeed) { curabot.currentSpeed = Math.max(targetSpeed, curabot.currentSpeed - curabot.accelerationRate * deltaTime); }
+
+            let dx = 0; let dy = 0;
+            if (keys.ArrowUp || keys.KeyW) dy = -1;
+            if (keys.ArrowDown || keys.KeyS) dy = 1;
+            if (keys.ArrowLeft || keys.KeyA) dx = -1;
+            if (keys.ArrowRight || keys.KeyD) dx = 1;
+
+            const moveMagnitude = Math.sqrt(dx * dx + dy * dy);
+            
+            if (moveMagnitude > 0) {
+                dx /= moveMagnitude; dy /= moveMagnitude;
+                curabot.rotation = Math.atan2(dy, dx);
+                // Use the determined currentEnergyDrainRate
+                curabot.currentEnergyDrainRate = currentEnergyDrainRate;
+            } else {
+                // If not moving, use stationary drain rate, unless in a special high-drain zone
+                if ((currentLevelName === 'levelC_beta' || currentLevelName === 'levelC') && isNearPleuraBoundary(curabot.x, curabot.y, curabot.radius)) { // Check directly here
+                     curabot.currentEnergyDrainRate = currentEnergyDrainRate; // Keep high drain if stationary in resistive zone
+                } else {
+                    curabot.currentEnergyDrainRate = curabot.stationaryEnergyDrainRate;
+                }
+            }
+
+            let nextX = curabot.x + dx * curabot.currentSpeed * deltaTime;
+            let nextY = curabot.y + dy * curabot.currentSpeed * deltaTime;
+
+            const oldX = curabot.x;
+            const oldY = curabot.y;
+
+            // Apply world boundary clamping as a final safeguard
+            const clampedX = clamp(nextX, curabot.radius, currentLevelConfig.worldWidth - curabot.radius);
+            const clampedY = clamp(nextY, curabot.radius, currentLevelConfig.worldHeight - curabot.radius);
+
+            // If clamping occurred, it means we hit the very edge of the world.
+            // This is distinct from tissue wall sliding.
+            // Keep this visual for world boundary hits.
+            if (clampedX !== nextX || clampedY !== nextY) {
+                collidedSegment = { p1: { x: oldX, y: oldY }, p2: { x: clampedX, y: clampedY } };
+                collisionVisualTimer = COLLISION_VISUAL_DURATION;
+            } else {
+                collidedSegment = null; // Clear visual if no world boundary collision
+            }
+
+            curabot.x = clampedX;
+            curabot.y = clampedY;
+
+
+            if (!infiniteEnergy) {
+                curabot.energy -= curabot.currentEnergyDrainRate * deltaTime;
+                curabot.energy = clamp(curabot.energy, 0, curabot.maxEnergy);
+            } else { curabot.energy = curabot.maxEnergy; }
+
+            if (curabot.energy <= 0) { setGameOver("CuraBot ran out of energy!"); return; }
+
+            // Use audioContext.currentTime for timing
+            const currentTimeInSeconds = audioContext ? audioContext.currentTime : performance.now() / 1000;
+
+
+            if (keys.Space) {
+                switch (curabot.currentToolIndex) {
+                    case 0: // Standard Pulse
+                        if (currentTimeInSeconds - curabot.lastPulseTime > curabot.pulseCooldown) {
+                            if (curabot.energy >= curabot.pulseEnergyCost || infiniteEnergy) {
+                                curabot.energy -= infiniteEnergy ? 0 : curabot.pulseEnergyCost;
+                                const targetX = curabot.x + 100 * Math.cos(curabot.rotation);
+                                const targetY = curabot.y + 100 * Math.sin(curabot.rotation);
+                                projectiles.push(new Projectile(curabot.x, curabot.y, targetX, targetY, 300, 20, '#ffcc00', 5));
+                                curabot.lastPulseTime = currentTimeInSeconds;
+                                curabot.isToolActiveVisual = true;
+                                curabot.toolVisualTimer = curabot.toolVisualDuration;
+                                playSound('pulse');
+                                if (curabot.energy <= 0 && !infiniteEnergy) { setGameOver("CuraBot ran out of energy!"); return; }
+                            }
+                        }
+                        break;
+                    case 1: // Antiviral Agent Spray
+                        if (currentTimeInSeconds - curabot.lastSprayTime > curabot.sprayCooldown) {
+                            // Adjusted maxRadius and opacity
+                            sprays.push(new Spray(curabot.x, curabot.y, 10, 70, 0.5, 'rgba(159, 122, 234, 0.5)', 'antiviral', 5));
+                            curabot.lastSprayTime = currentTimeInSeconds;
+                            curabot.isToolActiveVisual = true;
+                            curabot.toolVisualTimer = curabot.toolVisualDuration;
+                            playSound('spray');
+                        }
+                        break;
+                    case 2: // Cellular Repair Nanites
+                        if (currentTimeInSeconds - curabot.lastRepairTime > curabot.repairNaniteDuration) {
+                            if (curabot.energy > 0) {
+                                const activationCost = curabot.repairNaniteEnergyCost;
+                                if (!infiniteEnergy && curabot.energy < activationCost) { return; }
+                                if (!infiniteEnergy) { curabot.energy -= activationCost; }
+                                sprays.push(new Spray(curabot.x, curabot.y, 10, 70, 0.5, 'rgba(72, 187, 120, 0.5)', 'repair'));
+                                curabot.lastRepairTime = currentTimeInSeconds;
+                                curabot.isToolActiveVisual = true;
+                                curabot.toolVisualTimer = curabot.toolVisualDuration;
+                                playSound('repair_placeholder');
+                            }
+                        }
+                        break;
+                    case 3: // Teleport (New Tool 4)
+                        if (currentTimeInSeconds - curabot.lastTeleportTime > curabot.teleportCooldown) {
+                            if (curabot.energy >= curabot.teleportEnergyCost || infiniteEnergy) {
+                                curabot.energy -= infiniteEnergy ? 0 : curabot.teleportEnergyCost;
+                                const teleportTargetX = curabot.x + curabot.teleportDistance * Math.cos(curabot.rotation);
+                                const teleportTargetY = curabot.y + curabot.teleportDistance * Math.sin(curabot.rotation);
+
+                                let canTeleport = true; // Assume can teleport initially
+
+                                // Check world bounds first (this remains)
+                                if (teleportTargetX < curabot.radius || teleportTargetX > currentLevelConfig.worldWidth - curabot.radius ||
+                                    teleportTargetY < curabot.radius || teleportTargetY > currentLevelConfig.worldHeight - curabot.radius) {
+                                    canTeleport = false;
+                                }
+                                
+                                // Teleport no longer respects the pleura boundary as a hard stop.
+                                // It will only be limited by the overall world boundaries.
+                                
+                                if (canTeleport) {
+                                    curabot.x = teleportTargetX;
+                                    curabot.y = teleportTargetY;
+                                    curabot.lastTeleportTime = currentTimeInSeconds;
+                                    curabot.isToolActiveVisual = true;
+                                    curabot.toolVisualTimer = curabot.toolVisualDuration;
+                                    playSound('teleport');
+                                    if (curabot.energy <= 0 && !infiniteEnergy) { setGameOver("CuraBot ran out of energy!"); return; }
+                                } else {
+                                    // Teleport failed, perhaps play a "fail" sound or visual cue
+                                    // (This will now only trigger if world bounds are hit)
+                                }
+                            }
+                        }
+                        break;
+                }
+            } else { curabot.isRepairing = false; }
+            if (curabot.isToolActiveVisual) {
+                curabot.toolVisualTimer -= deltaTime;
+                if (curabot.toolVisualTimer <= 0) { curabot.isToolActiveVisual = false; }
+            }
+        }
+
+        /**
+         * Updates the camera position to follow the CuraBot.
+         */
+        function updateCamera() {
+            camera.x = curabot.x - camera.width / 2;
+            camera.y = curabot.y - camera.height / 2;
+            camera.x = clamp(camera.x, 0, currentLevelConfig.worldWidth - camera.width);
+            camera.y = clamp(camera.y, 0, currentLevelConfig.worldHeight - camera.height);
+        }
+
+        /**
+         * Draws the CuraBot on the canvas.
+         */
+        function drawCuraBot() {
+            ctx.save();
+            ctx.translate(curabot.x, curabot.y);
+            ctx.rotate(curabot.rotation);
+            const r = curabot.radius;
+            ctx.beginPath();
+            ctx.moveTo(r * 1.5, 0);
+            ctx.bezierCurveTo(r * 0.5, -r * 1.2, -r * 1.0, -r * 1.2, -r * 1.0, 0);
+            ctx.bezierCurveTo(-r * 1.0, r * 1.2, r * 0.5, r * 1.2, r * 1.5, 0);
+            ctx.closePath();
+            ctx.fillStyle = curabot.color; ctx.fill();
+            ctx.strokeStyle = '#a0aec0'; ctx.lineWidth = 2; ctx.stroke();
+            if (curabot.isToolActiveVisual) {
+                const alpha = (curabot.toolVisualTimer / curabot.toolVisualDuration) * 0.8; // Increased alpha for better visibility
+                const glowRadius = r * (1 + (curabot.toolVisualDuration - curabot.toolVisualTimer) / curabot.toolVisualDuration * 0.5);
+                ctx.beginPath(); ctx.arc(0, 0, glowRadius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`; ctx.fill(); ctx.closePath();
+            }
+
+            // Debug visual for collision with world boundaries
+            if (collidedSegment && collisionVisualTimer > 0) {
+                ctx.beginPath();
+                ctx.arc(0, 0, r + 5, 0, Math.PI * 2); // Draw a larger circle around CuraBot
+                ctx.strokeStyle = `rgba(255, 0, 0, ${collisionVisualTimer / COLLISION_VISUAL_DURATION})`; // Fade out red
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        /**
+         * Draws a simplified representation of blood vessels with pulsing effect across the world.
+         */
+        function drawBloodVessels() {
+            const pulseWidth = 8 + Math.sin(vesselPulseTimer * VESSEL_PULSE_SPEED) * VESSEL_PULSE_MAGNITUDE;
+            ctx.strokeStyle = 'rgba(255, 0, 0, 0.3)'; ctx.lineWidth = pulseWidth; ctx.lineCap = 'round';
+
+            // Main central vessel (runs vertically through the tall world)
+            ctx.beginPath();
+            ctx.moveTo(currentLevelConfig.worldWidth / 2, 0);
+            ctx.bezierCurveTo(
+                currentLevelConfig.worldWidth * 0.3, currentLevelConfig.worldHeight * 0.2,
+                currentLevelConfig.worldWidth * 0.7, currentLevelConfig.worldHeight * 0.8,
+                currentLevelConfig.worldWidth / 2, currentLevelConfig.worldHeight
+            );
+            ctx.stroke();
+
+            // Branching vessel 1 (upper left)
+            ctx.beginPath();
+            ctx.moveTo(currentLevelConfig.worldWidth * 0.1, currentLevelConfig.worldHeight * 0.1);
+            ctx.lineTo(currentLevelConfig.worldWidth * 0.3, currentLevelConfig.worldHeight * 0.3);
+            ctx.lineTo(currentLevelConfig.worldWidth * 0.2, currentLevelConfig.worldHeight * 0.5);
+            ctx.stroke();
+
+            // Branching vessel 2 (lower right)
+            ctx.beginPath();
+            ctx.moveTo(currentLevelConfig.worldWidth * 0.9, currentLevelConfig.worldHeight * 0.9);
+            ctx.lineTo(currentLevelConfig.worldWidth * 0.7, currentLevelConfig.worldHeight * 0.7);
+            ctx.lineTo(currentLevelConfig.worldWidth * 0.8, currentLevelConfig.worldHeight * 0.5);
+            ctx.stroke();
+
+            // Add more vessels to fill the larger world
+            ctx.beginPath();
+            ctx.moveTo(currentLevelConfig.worldWidth * 0.2, currentLevelConfig.worldHeight * 0.6);
+            ctx.bezierCurveTo(
+                currentLevelConfig.worldWidth * 0.1, currentLevelConfig.worldHeight * 0.7,
+                currentLevelConfig.worldWidth * 0.4, currentLevelConfig.worldHeight * 0.9,
+                currentLevelConfig.worldWidth * 0.5, currentLevelConfig.worldHeight * 0.8
+            );
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(currentLevelConfig.worldWidth * 0.8, currentLevelConfig.worldHeight * 0.3);
+            ctx.bezierCurveTo(
+                currentLevelConfig.worldWidth * 0.9, currentLevelConfig.worldHeight * 0.2,
+                currentLevelConfig.worldWidth * 0.6, currentLevelConfig.worldWidth * 0.1,
+                currentLevelConfig.worldWidth * 0.5, currentLevelConfig.worldHeight * 0.2
+            );
+            ctx.stroke();
+        }
+
+        /**
+         * Calculates the start and end coordinates for all lung structures (trachea, bronchi).
+         * This ensures that collision detection can use up-to-date geometric data.
+         */
+        function calculateLungStructureCoordinates() {
+            const lungStructures = currentLevelConfig.lungStructures;
+            if (!lungStructures) {
+                console.warn("calculateLungStructureCoordinates called but lungStructures is undefined.");
+                return;
+            }
+
+            const trachea = lungStructures.trachea;
+
+            // Calculate Trachea coordinates
+            if (trachea) {
+                trachea.startX = trachea.x + trachea.width / 2;
+                trachea.startY = trachea.y;
+                trachea.endX = trachea.x + trachea.width / 2;
+                trachea.endY = trachea.y + trachea.length;
+                trachea.angle = Math.PI / 2; // Fixed vertical angle for trachea (downwards)
+            }
+
+
+            // Calculate Bronchi coordinates
+            if (lungStructures.bronchi) {
+                lungStructures.bronchi.forEach(bronchus => {
+                    let parentRef;
+                    if (bronchus.parent === 'trachea') {
+                        parentRef = trachea;
+                    } else {
+                        parentRef = lungStructures.bronchi.find(b => b.id === bronchus.parent);
+                    }
+
+                    if (parentRef && parentRef.endX !== undefined && parentRef.endY !== undefined) {
+                        const parentPathLength = distance(parentRef.startX, parentRef.startY, parentRef.endX, parentRef.endY);
+                        
+                        // Calculate the branch point along the parent's centerline
+                        // branchOffset is a distance from the parent's start
+                        const branchPointX = parentRef.startX + (parentRef.endX - parentRef.startX) * (bronchus.branchOffset / parentPathLength);
+                        const branchPointY = parentRef.startY + (parentRef.endY - parentRef.startY) * (bronchus.branchOffset / parentPathLength);
+
+                        bronchus.startX = branchPointX;
+                        bronchus.startY = branchPointY;
+
+                        const end = getEndPoint(bronchus.startX, bronchus.startY, bronchus.length, bronchus.angle);
+                        bronchus.endX = end.x;
+                        bronchus.endY = end.y;
+                    } else {
+                        console.warn(`Parent for bronchus ${bronchus.id} not found or end points not calculated during coordinate calculation.`);
+                        // Fallback to a default position if parent is not ready, though this should ideally not happen now.
+                        bronchus.startX = currentLevelConfig.worldWidth / 2;
+                        bronchus.startY = currentLevelConfig.worldHeight / 2;
+                        bronchus.endX = bronchus.startX + bronchus.length * Math.cos(bronchus.angle);
+                        bronchus.endY = bronchus.startY + bronchus.length * Math.sin(bronchus.angle);
+                    }
+                });
+            }
+
+            // Calculate Alveoli coordinates (position at parent bronchus end)
+            if (lungStructures.alveoli) {
+                lungStructures.alveoli.forEach(alveolus => {
+                    const parentBronchus = lungStructures.bronchi.find(b => b.id === alveolus.parent);
+                    if (parentBronchus && parentBronchus.endX !== undefined && parentBronchus.endY !== undefined) {
+                        alveolus.x = parentBronchus.endX;
+                        alveolus.y = parentBronchus.endY;
+                    } else {
+                        console.warn(`Alveolus ${alveolus.id} coordinates not calculated yet.`);
+                        alveolus.x = currentLevelConfig.worldWidth / 2;
+                        alveolus.y = currentLevelConfig.worldHeight / 2;
+                    }
+                });
+            }
+        }
+
+        /**
+         * Flattens a Bezier curve into a series of line segments for collision detection.
+         * @param {Array<object>} bezierSegments - An array of Bezier segment objects.
+         * @param {number} numSubdivisions - The number of line segments to approximate each Bezier curve.
+         * @returns {Array<object>} An array of line segments { p1: {x,y}, p2: {x,y} }.
+         */
+        function getFlattenedBezierSegments(bezierSegments, numSubdivisions = 10) {
+            const flattened = [];
+            if (!bezierSegments) return flattened; // Safety check
+            bezierSegments.forEach(segment => {
+                let lastPoint = { x: segment.startX, y: segment.startY };
+                for (let i = 1; i <= numSubdivisions; i++) {
+                    const t = i / numSubdivisions;
+                    // Calculate point on cubic Bezier curve
+                    const x = Math.pow(1 - t, 3) * segment.startX +
+                              3 * Math.pow(1 - t, 2) * t * segment.control1X +
+                              3 * (1 - t) * Math.pow(t, 2) * segment.control2X +
+                              Math.pow(t, 3) * segment.endX;
+                    const y = Math.pow(1 - t, 3) * segment.startY +
+                              3 * Math.pow(1 - t, 2) * t * segment.control1Y +
+                              3 * (1 - t) * Math.pow(t, 2) * segment.control2Y +
+                              Math.pow(t, 3) * segment.endY;
+                    
+                    const currentPoint = { x, y };
+                    flattened.push({ p1: lastPoint, p2: currentPoint });
+                    lastPoint = currentPoint;
+                }
+            });
+            return flattened;
+        }
+
+        /**
+         * Calculates the four corner points of a rectangle representing a line segment with a given width.
+         * Useful for drawing outlines or debug visuals for tube-like structures.
+         * @param {number} x1 - Start X of the segment.
+         * @param {number} y1 - Start Y of the segment.
+         * @param {number} x2 - End X of the segment.
+         * @param {number} y2 - End Y of the segment.
+         * @param {number} width - The width of the rectangle.
+         * @returns {Array<object>} An array of four {x, y} corner points.
+         */
+        function getRectCornersFromSegment(x1, y1, x2, y2, width) {
+            const angle = Math.atan2(y2 - y1, x2 - y1);
+            const halfWidth = width / 2;
+            const perpAngle = angle + Math.PI / 2; // Perpendicular angle
+
+            const dx_perp = halfWidth * Math.cos(perpAngle);
+            const dy_perp = halfWidth * Math.sin(perpAngle);
+
+            // Calculate the four corners
+            const p1 = { x: x1 + dx_perp, y: y1 + dy_perp };
+            const p2 = { x: x2 + dx_perp, y: y2 + dy_perp };
+            const p3 = { x: x2 - dx_perp, y: y2 - dy_perp };
+            const p4 = { x: x1 - dx_perp, y: y1 - dy_perp };
+
+            return [p1, p2, p3, p4];
+        }
+
+
+        /**
+         * Draws the programmatic lung structures for Level C.
+         * @param {object} lungStructures - The data object containing trachea, bronchi, alveoli, etc.
+         * @param {number} currentTime - Current time for animations.
+         */
+        function drawLungStructures(lungStructures, currentTime) {
+            if (!lungStructures) {
+                console.warn("drawLungStructures called but lungStructures is undefined.");
+                return;
+            }
+
+            // Set global line join/cap for consistency, though specific drawing methods might override
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.globalCompositeOperation = 'source-over'; // Ensure normal blending for transparent layers
+
+            // Draw Tissue Walls (Outer boundary - Pleura)
+            if (lungStructures.tissueWalls) {
+                lungStructures.tissueWalls.forEach((wall, wallIndex) => { // Changed segmentIndex to wallIndex
+                    if (wall.type === 'polygon' && wall.points && wall.points.length > 1) {
+                        ctx.beginPath();
+                        ctx.moveTo(wall.points[0].x, wall.points[0].y);
+                        for (let i = 1; i < wall.points.length; i++) {
+                            ctx.lineTo(wall.points[i].x, wall.points[i].y);
+                        }
+                        ctx.closePath();
+                        ctx.fillStyle = wall.visualColor || 'rgba(50, 20, 0, 0.3)';
+                        ctx.fill();
+                        ctx.strokeStyle = wall.strokeColor || 'rgba(100, 50, 0, 0.8)';
+                        ctx.lineWidth = 5;
+                        ctx.stroke();
+                    } else if (wall.type === 'bezier' && wall.segments && wall.segments.length > 0) {
+                        ctx.beginPath();
+                        // Start the path with the first segment's start point
+                        ctx.moveTo(wall.segments[0].startX, wall.segments[0].startY);
+                        
+                        // Draw each Bezier segment
+                        wall.segments.forEach((segment, i) => { // Added 'i' for segment index
+                            // Ensure segment is not undefined before accessing its properties
+                            if (!segment) {
+                                console.warn(`Undefined segment found in tissueWalls at wallIndex ${wallIndex}, segmentIndex ${i}`);
+                                return; // Skip this segment if it's undefined
+                            }
+
+                            // Debugging: Verify point linkage (internal check)
+                            if (i > 0) {
+                                const prevSegment = wall.segments[i - 1];
+                                if (prevSegment.endX !== segment.startX || prevSegment.endY !== segment.startY) {
+                                    console.warn(`[Bezier Draw] DISCREPANCY DETECTED at segment ${i}! Prev end (${prevSegment.endX}, ${prevSegment.endY}), Current start (${segment.startX}, ${segment.startY})`);
+                                }
+                            }
+                            // Debugging: Check last segment's end with first segment's start for closure (internal check)
+                            if (i === wall.segments.length - 1) {
+                                const firstSegment = wall.segments[0];
+                                if (segment.endX !== firstSegment.startX || segment.endY !== firstSegment.startY) {
+                                    console.warn(`[Bezier Draw] CLOSURE DISCREPANCY DETECTED! Last end (${segment.endX}, ${segment.endY}), First start (${firstSegment.startX}, ${firstSegment.startY})`);
+                                }
+                            }
+
+                            ctx.bezierCurveTo(
+                                segment.control1X, segment.control1Y,
+                                segment.control2X, segment.control2Y,
+                                segment.endX, segment.endY
+                            );
+
+                            // Visual patch: Draw a small filled circle at the end of each segment
+                            // to ensure seamless connection and cover potential rendering gaps.
+                            ctx.save();
+                            ctx.fillStyle = wall.strokeColor || 'rgba(100, 50, 0, 0.8)'; // Use the stroke color
+                            ctx.beginPath();
+                            // Radius is half the stroke width, scaled by inverse zoom to maintain screen size
+                            ctx.arc(segment.endX, segment.endY, (wall.strokeWidth || 5) / (2 * editorZoomLevel), 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.restore();
+
+
+                            // Debugging: Draw control points if showDetailedLungOutline is true
+                            // THIS BLOCK IS NOW INSIDE THE INNER FOREACH LOOP
+                            if (showDetailedLungOutline) {
+                                ctx.save(); // Save context before applying local scaling for handles
+
+                                // Draw start and end points - RADIUS IS NOW SCALED BY ZOOM
+                                // The radius is in world units, so it will be scaled by editorZoomLevel
+                                // to appear larger on screen when zoomed in.
+                                ctx.fillStyle = (selectedBezierPoint && selectedBezierPoint.wallIndex === wallIndex && selectedBezierPoint.segmentIndex === i && (selectedBezierPoint.pointType === 'startX' || selectedBezierPoint.pointType === 'startY')) ? 'yellow' : 'blue';
+                                ctx.beginPath(); ctx.arc(segment.startX, segment.startY, BEZIER_HANDLE_RADIUS / editorZoomLevel, 0, Math.PI * 2); ctx.fill();
+                                ctx.fillStyle = (selectedBezierPoint && selectedBezierPoint.wallIndex === wallIndex && selectedBezierPoint.segmentIndex === i && (selectedBezierPoint.pointType === 'endX' || selectedBezierPoint.pointType === 'endY')) ? 'yellow' : 'blue';
+                                ctx.beginPath(); ctx.arc(segment.endX, segment.endY, BEZIER_HANDLE_RADIUS / editorZoomLevel, 0, Math.PI * 2); ctx.fill();
+
+                                // Draw control points - RADIUS IS NOW SCALED BY ZOOM
+                                ctx.fillStyle = (selectedBezierPoint && selectedBezierPoint.wallIndex === wallIndex && selectedBezierPoint.segmentIndex === i && (selectedBezierPoint.pointType === 'control1X' || selectedBezierPoint.pointType === 'control1Y')) ? 'yellow' : 'green';
+                                ctx.beginPath(); ctx.arc(segment.control1X, segment.control1Y, BEZIER_HANDLE_RADIUS / editorZoomLevel, 0, Math.PI * 2); ctx.fill();
+                                ctx.fillStyle = (selectedBezierPoint && selectedBezierPoint.wallIndex === wallIndex && selectedBezierPoint.segmentIndex === i && (selectedBezierPoint.pointType === 'control2X' || selectedBezierPoint.pointType === 'control2Y')) ? 'yellow' : 'green';
+                                ctx.beginPath(); ctx.arc(segment.control2X, segment.control2Y, BEZIER_HANDLE_RADIUS / editorZoomLevel, 0, Math.PI * 2); ctx.fill();
+
+                                // Draw control lines - LINE WIDTH SCALES INVERSELY WITH ZOOM for consistent screen thickness
+                                ctx.strokeStyle = 'red';
+                                ctx.lineWidth = 1 / editorZoomLevel; // This makes lines appear same thickness regardless of zoom
+                                ctx.beginPath();
+                                ctx.moveTo(segment.startX, segment.startY);
+                                ctx.lineTo(segment.control1X, segment.control1Y);
+                                ctx.stroke();
+
+                                ctx.beginPath();
+                                ctx.moveTo(segment.endX, segment.endY);
+                                ctx.lineTo(segment.control2X, segment.control2Y);
+                                ctx.stroke();
+                                ctx.restore(); // Restore context to remove local scaling/line width changes
+                            }
+                        }); // End of inner forEach
+                        
+                        ctx.closePath(); // Close the path to form a complete shape
+
+                        ctx.fillStyle = wall.visualColor || 'rgba(50, 20, 0, 0.3)';
+                        ctx.fill();
+                        ctx.strokeStyle = wall.strokeColor || 'rgba(100, 50, 0, 0.8)';
+                        ctx.lineWidth = wall.strokeWidth || 5;
+                        ctx.stroke();
+                    }
+                });
+            }
+
+            // Draw Trachea
+            const trachea = lungStructures.trachea;
+            if (trachea) {
+                // Draw the transparent inner path (airway) as a filled rounded rectangle
+                const halfWidthTrachea = trachea.width / 2;
+                ctx.beginPath();
+                ctx.moveTo(trachea.startX + halfWidthTrachea, trachea.startY); // Top-right corner
+                ctx.lineTo(trachea.endX + halfWidthTrachea, trachea.endY);     // Bottom-right corner
+                ctx.arc(trachea.endX, trachea.endY, halfWidthTrachea, trachea.angle + Math.PI / 2, trachea.angle - Math.PI / 2, true); // Bottom cap
+                ctx.lineTo(trachea.startX - halfWidthTrachea * Math.cos(trachea.angle + Math.PI / 2), trachea.startY - halfWidthTrachea * Math.sin(trachea.angle + Math.PI / 2)); // Top-left (relative to angle)
+                ctx.arc(trachea.startX, trachea.startY, halfWidthTrachea, trachea.angle - Math.PI / 2, trachea.angle + Math.PI / 2, true); // Start cap
+                ctx.closePath();
+                ctx.fillStyle = trachea.visualColor;
+                ctx.fill();
+
+                // Draw the wall outline (stroke)
+                ctx.beginPath();
+                ctx.moveTo(trachea.startX, trachea.startY);
+                ctx.lineTo(trachea.endX, trachea.endY);
+                ctx.lineWidth = trachea.width + 6; // Slightly thicker for the outline
+                ctx.strokeStyle = trachea.wallColor; // The brownish-red outline
+                ctx.stroke();
+
+                if (showOrganLabels) {
+                    ctx.fillStyle = '#FFFFFF'; ctx.font = '16px Arial'; ctx.textAlign = 'center';
+                    ctx.fillText('Trachea', trachea.x + trachea.width / 2, trachea.y + trachea.length / 2);
+                    // Debug point for trachea end (orange)
+                    ctx.beginPath(); ctx.arc(trachea.endX, trachea.endY, 5, 0, Math.PI * 2); ctx.fillStyle = 'orange'; ctx.fill();
+                }
+
+                // Draw the safe zone for debugging
+                if (showDetailedLungOutline) { // Using this debug flag for safe zone visualization
+                    const safeRadiusTrachea = (trachea.width / 2) - curabot.radius;
+                    if (safeRadiusTrachea > 0) {
+                        ctx.beginPath();
+                        ctx.arc(trachea.startX, trachea.startY, safeRadiusTrachea, 0, Math.PI * 2); // Top cap of safe zone
+                        ctx.arc(trachea.endX, trachea.endY, safeRadiusTrachea, 0, Math.PI * 2);     // Bottom cap of safe zone
+                        ctx.rect(trachea.startX - safeRadiusTrachea, trachea.startY, safeRadiusTrachea * 2, trachea.length);
+                        ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)'; // Cyan for safe zone
+                        ctx.lineWidth = 1 / editorZoomLevel; // Scale line width with zoom
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            // Draw Bronchi
+            if (lungStructures.bronchi) {
+                lungStructures.bronchi.forEach(bronchus => {
+                    if (bronchus.startX !== undefined && bronchus.startY !== undefined && bronchus.endX !== undefined && bronchus.endY !== undefined) {
+                        // Draw the transparent inner path (airway) as a filled rounded rectangle
+                        const halfWidthBronchus = bronchus.width / 2;
+                        ctx.beginPath();
+                        // Calculate the perpendicular offset vectors for the sides
+                        const cosPerp = Math.cos(bronchus.angle + Math.PI / 2);
+                        const sinPerp = Math.sin(bronchus.angle + Math.PI / 2);
+
+                        ctx.moveTo(bronchus.startX + halfWidthBronchus * cosPerp, bronchus.startY + halfWidthBronchus * sinPerp); // Top-left (relative to angle)
+                        ctx.lineTo(bronchus.endX + halfWidthBronchus * cosPerp, bronchus.endY + halfWidthBronchus * sinPerp);     // Top-right
+                        ctx.arc(bronchus.endX, bronchus.endY, halfWidthBronchus, bronchus.angle + Math.PI / 2, bronchus.angle - Math.PI / 2, true); // End cap
+                        ctx.lineTo(bronchus.startX - halfWidthBronchus * cosPerp, bronchus.startY - halfWidthBronchus * sinPerp); // Bottom-left
+                        ctx.arc(bronchus.startX, bronchus.startY, halfWidthBronchus, bronchus.angle - Math.PI / 2, bronchus.angle + Math.PI / 2, true); // Start cap
+                        ctx.closePath();
+                        ctx.fillStyle = bronchus.visualColor;
+                        ctx.fill();
+
+                        // Draw the wall outline (stroke)
+                        ctx.beginPath();
+                        ctx.moveTo(bronchus.startX, bronchus.startY);
+                        ctx.lineTo(bronchus.endX, bronchus.endY);
+                        ctx.lineWidth = bronchus.width + 6; // Slightly thicker for the outline
+                        ctx.strokeStyle = trachea.wallColor; // Use trachea wall color for bronchi walls
+                        ctx.stroke();
+
+                        if (showOrganLabels) {
+                            ctx.fillStyle = '#FFFFFF'; ctx.font = '14px Arial'; ctx.textAlign = 'center';
+                            const midX = bronchus.startX + (bronchus.length / 2) * Math.cos(bronchus.angle);
+                            const midY = bronchus.startY + (bronchus.length / 2) * Math.sin(bronchus.angle);
+                            ctx.fillText(bronchus.id, midX, midY);
+                            // Debug point for start of bronchus (green)
+                            ctx.beginPath(); ctx.arc(bronchus.startX, bronchus.startY, 5, 0, Math.PI * 2); ctx.fillStyle = 'green'; ctx.fill();
+                            // Debug point for end of bronchus (blue)
+                            ctx.beginPath(); ctx.arc(bronchus.endX, bronchus.endY, 5, 0, Math.PI * 2); ctx.fillStyle = 'blue'; ctx.fill();
+                        }
+                    } else {
+                        console.warn(`Bronchus ${bronchus.id} coordinates not calculated yet.`);
+                    }
+                });
+            }
+
+            // Draw Alveoli
+            if (lungStructures.alveoli) {
+                lungStructures.alveoli.forEach(alveolus => {
+                    if (alveolus.x !== undefined && alveolus.y !== undefined) {
+                        // Animate radius for breathing effect
+                        const animatedRadius = alveolus.radius + Math.sin(currentTime * 0.005) * (alveolus.pulseMagnitude || 0);
+
+                        ctx.beginPath();
+                        ctx.arc(alveolus.x, alveolus.y, animatedRadius, 0, Math.PI * 2);
+                        ctx.fillStyle = alveolus.visualColor;
+                        ctx.fill();
+                        ctx.strokeStyle = trachea.wallColor; // Use trachea wall color for alveoli walls
+                        ctx.lineWidth = 3;
+                        ctx.stroke();
+
+                        if (showOrganLabels) {
+                            ctx.fillStyle = '#FFFFFF'; ctx.font = '12px Arial'; ctx.textAlign = 'center';
+                            ctx.fillText(alveolus.id, alveolus.x, alveolus.y);
+                        }
+                    } else {
+                        console.warn(`Alveolus ${alveolus.id} coordinates not calculated yet.`);
+                    }
+                });
+            }
+
+            // Draw interactive elements for Level C
+            if (currentLevelConfig.interactiveElements) {
+                currentLevelConfig.interactiveElements.forEach(element => {
+                    ctx.beginPath();
+                    ctx.arc(element.x, element.y, element.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = element.visualColor;
+                    ctx.fill();
+                    ctx.closePath();
+                    if (showOrganLabels) {
+                        ctx.fillStyle = '#FFFFFF'; ctx.font = '10px Arial'; ctx.textAlign = 'center';
+                        ctx.fillText(element.type, element.x, element.y - element.radius - 5);
+                    }
+                });
+            }
+
+            ctx.shadowBlur = 0; // Reset shadow
+
+            // New Debug Visual for exact rectangle outlines
+            if (showDetailedLungOutline) { // This is the new debug flag
+                ctx.save();
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)'; // Red transparent outline
+                ctx.lineWidth = 2 / editorZoomLevel; // Scale line width with zoom
+
+                // Draw trachea as a rectangle (it's already axis-aligned)
+                if (trachea) {
+                    ctx.beginPath();
+                    ctx.rect(trachea.x, trachea.y, trachea.width, trachea.length);
+                    ctx.stroke();
+                }
+
+
+                // Draw bronchi as rotated rectangles using the new helper
+                if (lungStructures.bronchi) {
+                    lungStructures.bronchi.forEach(bronchus => {
+                        if (bronchus.startX !== undefined && bronchus.startY !== undefined && bronchus.endX !== undefined && bronchus.endY !== undefined) {
+                            const corners = getRectCornersFromSegment(bronchus.startX, bronchus.startY, bronchus.endX, bronchus.endY, bronchus.width);
+                            ctx.beginPath();
+                            ctx.moveTo(corners[0].x, corners[0].y);
+                            ctx.lineTo(corners[1].x, corners[1].y);
+                            ctx.lineTo(corners[2].x, corners[2].y);
+                            ctx.lineTo(corners[3].x, corners[3].y);
+                            ctx.closePath();
+                            ctx.stroke();
+                        }
+                    });
+                }
+
+                // Draw the PLEURA_BUFFER_ZONE
+                const tissueWall = lungStructures.tissueWalls?.[0]; // Use optional chaining for safety
+                if (tissueWall && tissueWall.type === 'bezier' && tissueWall.segments && tissueWall.segments.length > 0) {
+                    ctx.beginPath();
+                    const flattened = getFlattenedBezierSegments(tissueWall.segments, 100);
+                    flattened.forEach(segment => {
+                        const angle = Math.atan2(segment.p2.y - segment.p1.y, segment.p2.x - segment.p1.x);
+                        const perpAngle = angle + Math.PI / 2;
+                        const dx_perp = PLEURA_BUFFER_ZONE * Math.cos(perpAngle);
+                        const dy_perp = PLEURA_BUFFER_ZONE * Math.sin(perpAngle);
+
+                        ctx.moveTo(segment.p1.x + dx_perp, segment.p1.y + dy_perp);
+                        ctx.lineTo(segment.p2.x + dx_perp, segment.p2.y + dy_perp);
+                    });
+                    ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)'; // Cyan for buffer zone
+                    ctx.lineWidth = 1 / editorZoomLevel; // Scale line width with zoom
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+        }
+
+
+        /**
+         * Draws simplified organ outlines with damage/healing visuals.
+         */
+        function drawOrganOutlines() {
+            ctx.lineJoin = 'round';
+
+            // Special drawing for Level C (Lungs) and Level C Beta
+            if (currentLevelName === 'levelC' || currentLevelName === 'levelC_beta') {
+                drawLungStructures(currentLevelConfig.lungStructures, lastTime); // Pass lastTime for animation
+
+                // Draw the collision visual if active (only for world boundaries now)
+                if (collidedSegment && collisionVisualTimer > 0) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = 'yellow';
+                    ctx.lineWidth = 4;
+                    ctx.moveTo(collidedSegment.p1.x, collidedSegment.p1.y);
+                    ctx.lineTo(collidedSegment.p2.x, collidedSegment.p2.y);
+                    ctx.stroke();
+                }
+
+            } else { // Existing drawing logic for Level A and B
+                currentLevelConfig.organs.forEach(organ => {
+                    ctx.beginPath();
+                    let liX, siX, siY; // Declared here for scope
+                    let liY; // Declare liY here
+
+                    switch (organ.drawShape) {
+                        case 'heart':
+                            ctx.lineWidth = 10;
+                            ctx.moveTo(organ.x, organ.y + organ.radius * 0.8);
+                            ctx.bezierCurveTo(
+                                organ.x + organ.radius * 1.5, organ.y - organ.radius * 0.8,
+                                organ.x + organ.radius * 0.5, organ.y - organ.radius * 1.5,
+                                organ.x, organ.y - organ.radius * 0.5
+                            );
+                            ctx.bezierCurveTo(
+                                organ.x - organ.radius * 0.5, organ.y - organ.radius * 1.5,
+                                organ.x - organ.radius * 1.5, organ.y - organ.radius * 0.8,
+                                organ.x, organ.y + organ.radius * 0.8
+                            );
+                            break;
+                        case 'lung':
+                            ctx.lineWidth = 10;
+                            const lungWidth = organ.radius * 1.8;
+                            const lungHeight = organ.radius * 2.5;
+                            const lobeDepth = organ.radius * 0.4;
+                            if (organ.name === 'Left Lung') {
+                                ctx.moveTo(organ.x - lungWidth * 0.2, organ.y - lungHeight * 0.5);
+                                ctx.bezierCurveTo(organ.x - lungWidth * 0.8, organ.y - lungHeight * 0.8, organ.x - lungWidth * 0.9, organ.y + lungHeight * 0.2, organ.x - lungWidth * 0.2, organ.y + lungHeight * 0.5);
+                                ctx.bezierCurveTo(organ.x + lungWidth * 0.3, organ.y + lungHeight * 0.5 + lobeDepth, organ.x + lungWidth * 0.3, organ.y - lungHeight * 0.5 - lobeDepth, organ.x + lungWidth * 0.2, organ.y - lungHeight * 0.5);
+                            } else {
+                                ctx.moveTo(organ.x + lungWidth * 0.2, organ.y - lungHeight * 0.5);
+                                ctx.bezierCurveTo(organ.x + lungWidth * 0.8, organ.y - lungHeight * 0.8, organ.x + lungWidth * 0.9, organ.y + lungHeight * 0.2, organ.x + lungWidth * 0.2, organ.y + lungHeight * 0.5);
+                                ctx.bezierCurveTo(organ.x - lungWidth * 0.3, organ.y + lungHeight * 0.5 + lobeDepth, organ.x - lungWidth * 0.3, organ.y - lungHeight * 0.5 - lobeDepth, organ.x + lungWidth * 0.2, organ.y - lungHeight * 0.5);
+                            }
+                            break;
+                        case 'brain':
+                            ctx.lineWidth = 10;
+                            const bR = organ.radius; const bX = organ.x; const bY = organ.y;
+                            ctx.moveTo(bX - bR * 0.8, bY - bR * 0.2);
+                            ctx.bezierCurveTo(bX - bR * 1.2, bY - bR * 0.8, bX + bR * 0.2, bY - bR * 1.2, bX + bR * 0.8, bY - bR * 0.5);
+                            ctx.bezierCurveTo(bX + bR * 1.2, bY + bR * 0.2, bX + bR * 0.5, bY + bR * 1.0, bX, bY + bR * 0.9);
+                            ctx.bezierCurveTo(bX - bR * 0.5, bY + bR * 1.0, bX - bR * 1.2, bY + bR * 0.2, bX - bR * 0.8, bY - bR * 0.2);
+                            ctx.moveTo(bX - bR * 0.4, bY - bR * 0.7);
+                            ctx.bezierCurveTo(bX - bR * 0.1, bY - bR * 1.0, bX + bR * 0.1, bY - bR * 1.0, bX + bR * 0.4, bY - bR * 0.7);
+                            ctx.moveTo(bX - bR * 0.6, bY + bR * 0.1);
+                            ctx.bezierCurveTo(bX - bR * 0.3, bY + bR * 0.5, bX + bR * 0.3, bY + bR * 0.5, bX + bR * 0.6, bY + bR * 0.1);
+                            ctx.moveTo(bX - bR * 0.3, bY + bR * 0.6);
+                            ctx.bezierCurveTo(bX, bY + bR * 0.8, bX, bY + bR * 0.8, bX + bR * 0.3, bY + bR * 0.6);
+                            break;
+                        case 'stomach':
+                            ctx.lineWidth = 10;
+                            ctx.moveTo(organ.x + organ.radius * 0.5, organ.y - organ.radius * 1.0);
+                            ctx.bezierCurveTo(organ.x + organ.radius * 1.2, organ.y - organ.radius * 0.8, organ.x + organ.radius * 1.0, organ.y + organ.radius * 0.5, organ.x + organ.radius * 0.2, organ.y + organ.radius * 1.0);
+                            ctx.bezierCurveTo(organ.x - organ.radius * 0.8, organ.y + organ.radius * 1.2, organ.x - organ.radius * 1.2, organ.y + organ.radius * 0.5, organ.x - organ.radius * 0.5, organ.y - organ.radius * 0.8);
+                            ctx.lineTo(organ.x + organ.radius * 0.5, organ.y - organ.radius * 1.0);
+                            break;
+                        case 'liver':
+                            ctx.lineWidth = 10;
+                            const lR = organ.radius; const lX = organ.x; const lY = organ.y;
+                            ctx.moveTo(lX - lR * 0.8, lY - lR * 0.5);
+                            ctx.bezierCurveTo(lX - lR * 1.2, lY - lR * 1.0, lX - lR * 0.2, lY - lR * 1.2, lX + lR * 0.5, lY - lR * 0.8);
+                            ctx.bezierCurveTo(lX + lR * 1.2, lY - lR * 0.5, lX + lR * 1.0, lY + lR * 0.5, lX + lR * 0.5, lY + lR * 0.8);
+                            ctx.bezierCurveTo(lX + lR * 0.0, lY + lR * 1.2, lX - lR * 0.8, lY + lR * 0.8, lX - lR * 1.0, lY + lR * 0.2);
+                            ctx.bezierCurveTo(lX - lR * 1.2, lY - lR * 0.1, lX - lR * 0.8, lY - lR * 0.5, lX - lR * 0.8, lY - lR * 0.5);
+                            break;
+                        case 'kidney':
+                            ctx.lineWidth = 10;
+                            const kR = organ.radius; const kX = organ.x; const kY = organ.y;
+                            ctx.moveTo(kX, kY - kR);
+                            ctx.bezierCurveTo(kX + kR, kY - kR, kX + kR * 1.5, kY + kR * 0.5, kX + kR * 0.5, kY + kR);
+                            ctx.bezierCurveTo(kX - kR * 0.5, kY + kR, kX - kR, kY - kR * 0.5, kX, kY - kR);
+                            break;
+                        case 'largeIntestine':
+                            liX = organ.x; liY = organ.y;
+                            const liTubeWidth = 10;
+                            ctx.strokeStyle = '#8B4513';
+                            const largeIntestinePath = [
+                                { x: liX + 100, y: liY + 100 }, { x: liX + 150, y: liY + 50 }, { x: liX + 150, y: liY - 50 },
+                                { x: liX + 100, y: liY - 150 }, { x: liX + 50, y: liY - 200 }, { x: liX - 50, y: liY - 200 },
+                                { x: liX - 100, y: liY - 150 }, { x: liX - 150, y: liY - 50 }, { x: liX - 150, y: liY + 50 },
+                                { x: liX - 100, y: liY + 100 }, { x: liX - 50, y: liY + 150 }, { x: liX + 50, y: liY + 150 },
+                                { x: liX + 100, y: liY + 100 }
+                            ];
+                            ctx.lineWidth = 2;
+                            for (let i = 0; i < largeIntestinePath.length - 1; i++) {
+                                const p1 = largeIntestinePath[i]; const p2 = largeIntestinePath[i + 1];
+                                const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x); const perpAngle = angle + Math.PI / 2;
+                                const p1_offset1 = { x: p1.x + liTubeWidth * Math.cos(perpAngle), y: p1.y + liTubeWidth * Math.sin(perpAngle) };
+                                const p2_offset1 = { x: p2.x + liTubeWidth * Math.cos(perpAngle), y: p2.y + liTubeWidth * Math.sin(perpAngle) };
+                                const p1_offset2 = { x: p1.x - liTubeWidth * Math.cos(perpAngle), y: p1.y - liTubeWidth * Math.sin(perpAngle) };
+                                const p2_offset2 = { x: p2.x - liTubeWidth * Math.cos(perpAngle), y: p2.y - liTubeWidth * Math.sin(perpAngle) };
+                                ctx.beginPath(); ctx.moveTo(p1_offset1.x, p1_offset1.y); ctx.lineTo(p2_offset1.x, p2_offset1.y); ctx.stroke();
+                                ctx.beginPath(); ctx.moveTo(p1_offset2.x, p1_offset2.y); ctx.lineTo(p2_offset2.x, p2_offset2.y); ctx.stroke();
+                            }
+                            ctx.save(); ctx.lineWidth = 4; ctx.strokeStyle = '#ADD8E6';
+                            ctx.beginPath(); ctx.moveTo(liX + 130 - liTubeWidth, liY + 40); ctx.lineTo(liX + 130 + liTubeWidth, liY + 40); ctx.stroke();
+                            ctx.beginPath(); ctx.moveTo(liX + 110 - liTubeWidth, liY - 10); ctx.lineTo(liX + 110 + liTubeWidth, liY - 10); ctx.stroke();
+                            ctx.beginPath(); ctx.moveTo(liX + 30, liY - 170 - liTubeWidth); ctx.lineTo(liX + 30, liY - 170 + liTubeWidth); ctx.stroke();
+                            ctx.beginPath(); ctx.moveTo(liX - 30, liY - 170 - liTubeWidth); ctx.lineTo(liX - 30, liY - 170 + liTubeWidth); ctx.stroke();
+                            ctx.beginPath(); ctx.moveTo(liX - 130 - liTubeWidth, liY - 60); ctx.lineTo(liX + 130 + liTubeWidth, liY - 60); ctx.stroke();
+                            ctx.beginPath(); ctx.moveTo(liX - 110 - liTubeWidth, liY - 110); ctx.lineTo(liX + 110 + liTubeWidth, liY - 110); ctx.stroke();
+                            ctx.restore();
+                            break;
+                        case 'appendix':
+                            ctx.lineWidth = 10;
+                            const apR = organ.radius; const apX = organ.x; const apY = organ.y;
+                            ctx.moveTo(apX - apR, apY);
+                            ctx.bezierCurveTo(apX - apR * 0.5, apY - apR * 1.5, apX + apR * 0.5, apY - apR * 1.5, apX + apR, apY);
+                            ctx.bezierCurveTo(apX + apR * 0.5, apY + apR * 1.5, apX - apR * 0.5, apY + apR * 1.5, apX - apR, apY);
+                            break;
+                    }
+                    ctx.closePath();
+
+                    if (organ.isDamagedVisual && organ.visualTimer > 0) {
+                        const alpha = (organ.visualTimer / organ.visualDuration) * 0.8;
+                        ctx.strokeStyle = `rgba(255, 0, 0, ${alpha})`; ctx.shadowColor = `rgba(255, 0, 0, ${alpha})`; ctx.shadowBlur = 15;
+                    } else if (organ.isHealingVisual && organ.visualTimer > 0) {
+                        const alpha = (organ.visualTimer / organ.visualDuration) * 0.8;
+                        ctx.strokeStyle = `rgba(0, 255, 0, ${alpha})`; ctx.shadowColor = `rgba(0, 255, 0, ${alpha})`; ctx.shadowBlur = 15;
+                    } else {
+                        if (organ.drawShape !== 'largeIntestine' && organ.drawShape !== 'smallIntestine') {
+                            ctx.strokeStyle = 'rgba(0, 150, 255, 0.2)'; ctx.shadowBlur = 0;
+                        }
+                    }
+                    if (organ.drawShape !== 'largeIntestine' && organ.drawShape !== 'smallIntestine') { ctx.stroke(); }
+
+                    if (showOrganLabels) {
+                        ctx.fillStyle = '#FFFFFF'; ctx.font = '20px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                        ctx.fillText(organ.name, organ.x, organ.y - organ.radius - 20);
+                    }
+                });
+
+                // Draw connections between GI tract organs (only for Level A)
+                if (currentLevelName === 'levelA') {
+                    ctx.lineWidth = 12; ctx.strokeStyle = '#FFFF00'; ctx.shadowColor = '#FFFF00'; ctx.shadowBlur = 15;
+                    const stomach = currentLevelConfig.organs.find(o => o.name === 'Stomach');
+                    const smallIntestine = currentLevelConfig.organs.find(o => o.name === 'Small Intestine');
+                    const largeIntestine = currentLevelConfig.organs.find(o => o.name === 'Large Intestine');
+                    const appendix = currentLevelConfig.organs.find(o => o.name === 'Appendix');
+                    const liver = currentLevelConfig.organs.find(o => o.name === 'Liver');
+
+                    if (stomach && smallIntestine && liver) {
+                        ctx.beginPath();
+                        ctx.moveTo(liver.x - liver.radius * 0.5, liver.y + liver.radius * 0.8);
+                        ctx.bezierCurveTo(liver.x - liver.radius * 0.3, liver.y + liver.radius * 1.2, stomach.x + stomach.radius * 0.8, stomach.y + stomach.radius * 0.5, stomach.x + stomach.radius * 0.8, stomach.y + stomach.radius * 0.8);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(stomach.x + stomach.radius * 0.8, stomach.y + stomach.radius * 0.8);
+                        ctx.lineTo(smallIntestine.x, smallIntestine.y - smallIntestine.radius * 0.8);
+                        ctx.stroke();
+                    }
+                    if (smallIntestine && largeIntestine) {
+                        ctx.beginPath();
+                        ctx.moveTo(smallIntestine.x + smallIntestine.radius * 0.5, smallIntestine.y + smallIntestine.radius * 0.8);
+                        ctx.lineTo(largeIntestine.x + largeIntestine.radius * 0.5, largeIntestine.y + largeIntestine.radius * 0.8);
+                        ctx.stroke();
+                    }
+                    if (largeIntestine && appendix) {
+                        ctx.beginPath();
+                        ctx.moveTo(largeIntestine.x + largeIntestine.radius * 0.5, largeIntestine.y + largeIntestine.radius * 0.8);
+                        ctx.lineTo(appendix.x - appendix.radius, appendix.y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            ctx.shadowBlur = 0; ctx.lineWidth = 1;
+        }
+
+        /**
+         * Dynamically creates and updates organ health bars in the HUD.
+         */
+        function updateHUD() {
+            energyBar.style.width = `${(curabot.energy / curabot.maxEnergy) * 100}%`;
+            if (curabot.energy > 60) { energyBar.style.backgroundColor = '#48bb78'; }
+            else if (curabot.energy > 30) { energyBar.style.backgroundColor = '#ecc94b'; }
+            else { energyBar.style.backgroundColor = '#f56565'; }
+
+            currentToolDisplay.textContent = curabot.tools[curabot.currentToolIndex];
+
+            // Clear existing organ health bars
+            organHealthBarsContainer.innerHTML = '';
+
+            // Create and append health bars for organs in the current level
+            currentLevelConfig.organs.forEach(organ => {
+                const hudItem = document.createElement('div');
+                hudItem.className = 'hud-item';
+                hudItem.innerHTML = `
+                    <span>${organ.name}</span>
+                    <div class="progress-bar-container">
+                        <div id="${organ.name.replace(/\s/g, '')}HealthBar" class="progress-bar" style="background-color: #48bb78;"></div>
+                    </div>
+                `;
+                organHealthBarsContainer.appendChild(hudItem);
+
+                // Store reference to the actual DOM element for direct updates
+                organ.element = document.getElementById(`${organ.name.replace(/\s/g, '')}HealthBar`);
+
+                // Update the bar immediately after creation
+                if (organ.element) {
+                    organ.element.style.width = `${(organ.health / organ.maxHealth) * 100}%`;
+                    if (organ.health > 60) { organ.element.style.backgroundColor = '#48bb78'; }
+                    else if (organ.health > 30) { organ.element.style.backgroundColor = '#ecc94b'; }
+                    else { organ.element.style.backgroundColor = '#f56565'; }
+                }
+            });
+        }
+
+        /**
+         * Sets the game over state and displays a message.
+         * @param {string} message - The message to display on game over.
+         */
+        function setGameOver(message) {
+            gameState = 'gameOver';
+            overlayMessage.textContent = message;
+            gameOverlay.classList.remove('hidden');
+            gameOverlay.style.display = 'flex'; // Ensure it's displayed as flex
+            restartButton.classList.remove('hidden');
+            restartButton.style.display = 'block'; // Ensure it's displayed as block
+            returnToMainMenuButton.classList.remove('hidden');
+            returnToMainMenuButton.style.display = 'block'; // Ensure it's displayed as block
+            startButton.classList.add('hidden');
+            startButton.style.display = 'none'; // Ensure it's hidden
+            debugMenuButton.classList.add('hidden');
+            debugMenuButton.style.display = 'none'; // Ensure it's hidden
+            if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+            curabot.isRepairing = false;
+        }
+
+        let animationFrameId = null;
+
+        /**
+         * Toggles the game's pause state.
+         */
+        function togglePause() {
+            // Allow pausing in 'playing' state and bringing up a menu in 'bezierEdit' state
+            if (gameState === 'playing' || gameState === 'bezierEdit') {
+                isPaused = !isPaused;
+                if (isPaused) {
+                    // Set message based on current game state
+                    overlayMessage.textContent = (gameState === 'playing') ? "PAUSED" : "EDITOR MENU";
+                    gameOverlay.classList.remove('hidden');
+                    gameOverlay.style.display = 'flex'; // Ensure it's displayed as flex
+                    restartButton.classList.remove('hidden'); // Show restart button
+                    restartButton.style.display = 'block';
+                    returnToMainMenuButton.classList.remove('hidden'); // Show return to main menu button
+                    returnToMainMenuButton.style.display = 'block';
+                    startButton.classList.add('hidden'); // Hide start button
+                    startButton.style.display = 'none';
+                    debugMenuButton.classList.add('hidden'); // Hide debug menu button
+                    debugMenuButton.style.display = 'none';
+
+                    // If we are in bezierEdit mode and pause, hide the debug menu overlay
+                    if (gameState === 'bezierEdit') {
+                        debugMenuOverlay.classList.add('hidden');
+                        debugMenuOverlay.style.display = 'none';
+                    }
+
+                } else { // Unpausing
+                    gameOverlay.classList.add('hidden');
+                    gameOverlay.style.display = 'none'; // Ensure it's hidden
+                    restartButton.classList.add('hidden'); // Hide restart button
+                    restartButton.style.display = 'none';
+                    returnToMainMenuButton.classList.add('hidden'); // Hide return to main menu button
+                    returnToMainMenuButton.style.display = 'none';
+                    lastTime = performance.now(); // Reset lastTime to prevent large deltaTime jump
+
+                    // If we were in bezierEdit mode and unpause, show the debug menu overlay again
+                    if (gameState === 'bezierEdit') {
+                        debugMenuOverlay.classList.remove('hidden');
+                        debugMenuOverlay.style.display = 'flex';
+                    }
+                }
+            }
+        }
+
+        /**
+         * Loads a specific game level configuration.
+         * @param {string} levelName - The name of the level to load (e.g., 'levelA', 'levelB', 'levelC', 'levelC_beta').
+         */
+        function loadLevel(levelName) {
+            currentLevelName = levelName;
+            currentLevelConfig = JSON.parse(JSON.stringify(levelConfigurations[levelName])); // Deep copy
+
+            // Update camera dimensions to match the current canvas size
+            camera.width = canvas.width;
+            camera.height = canvas.height;
+
+            curabot.x = currentLevelConfig.initialCuraBotX;
+            curabot.y = currentLevelConfig.initialCuraBotY;
+            curabot.energy = curabot.maxEnergy;
+            curabot.currentToolIndex = 0;
+            curabot.lastDamageTime = 0;
+            curabot.lastPulseTime = 0;
+            curabot.lastSprayTime = 0;
+            curabot.lastRepairTime = 0;
+            curabot.lastTeleportTime = 0; // Reset teleport cooldown
+            curabot.isRepairing = false;
+            curabot.toolVisualTimer = 0;
+            curabot.isToolActiveVisual = false;
+            curabot.rotation = 0;
+            curabot.currentSpeed = curabot.normalSpeed; // Reset to normal speed on level load
+            curabot.currentEnergyDrainRate = curabot.stationaryEnergyDrainRate;
+
+            pathogens = [];
+            projectiles = [];
+            sprays = [];
+            whiteBloodCells = [];
+
+            pathogenSpawnTimer = 0;
+            friendlyWBCSpawnTimer = 0;
+            vesselPulseTimer = 0;
+
+            currentLevelConfig.organs.forEach(organ => {
+                organ.health = organ.maxHealth;
+                organ.lastHostileWBCSpawn = 0;
+                organ.isDamagedVisual = false;
+                organ.isHealingVisual = false;
+                organ.visualTimer = 0;
+            });
+
+            // IMPORTANT: Calculate lung structure coordinates immediately when Level C or C_beta is loaded
+            if (currentLevelName === 'levelC' || currentLevelName === 'levelC_beta') {
+                calculateLungStructureCoordinates();
+            }
+
+            // Reset camera to initial position for the new level
+            camera.x = currentLevelConfig.initialCuraBotX - camera.width / 2;
+            camera.y = currentLevelConfig.initialCuraBotY - camera.height / 2;
+            camera.x = clamp(camera.x, 0, currentLevelConfig.worldWidth - camera.width);
+            camera.y = clamp(camera.y, 0, currentLevelConfig.worldHeight - camera.height);
+
+            updateHUD(); // Update HUD to reflect new organ bars
+        }
+
+
+        /**
+         * Resets the game to its initial state (main menu).
+         */
+        function resetGame() {
+            console.log("resetGame called. Current gameState:", gameState); // Debug log
+            if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+
+            // Explicitly set currentLevelName and currentLevelConfig here for clarity and robustness
+            currentLevelName = 'levelC_beta'; // Default starting level
+            currentLevelConfig = JSON.parse(JSON.stringify(levelConfigurations[currentLevelName])); // Deep copy to prevent modification issues
+
+            isPaused = false;
+            selectedBezierPoint = null; // Clear any selected point
+            
+            // IMPORTANT: Re-calculate lung structure coordinates immediately after setting currentLevelConfig
+            // This ensures all derived properties (startX, endX, etc.) are up-to-date for drawing
+            if (currentLevelName === 'levelC' || currentLevelName === 'levelC_beta') {
+                calculateLungStructureCoordinates();
+            }
+
+            // Update debug toggle button visuals
+            organLabelsToggle.textContent = showOrganLabels ? 'ON' : 'OFF';
+            organLabelsToggle.classList.toggle('debug-toggle-on', showOrganLabels);
+            organLabelsToggle.classList.toggle('debug-toggle-off', !showOrganLabels);
+
+            infiniteEnergyToggle.textContent = infiniteEnergy ? 'ON' : 'OFF';
+            infiniteEnergyToggle.classList.toggle('debug-toggle-on', infiniteEnergy);
+            infiniteEnergyToggle.classList.toggle('debug-toggle-off', !infiniteEnergy);
+
+            detailedLungOutlineToggle.textContent = showDetailedLungOutline ? 'ON' : 'OFF';
+            detailedLungOutlineToggle.classList.toggle('debug-toggle-on', showDetailedLungOutline);
+            detailedLungOutlineToggle.classList.toggle('debug-toggle-off', !showDetailedLungOutline);
+
+            // Ensure exportBezierOption is hidden on reset if detailed outline is off
+            if (exportBezierOption) {
+                exportBezierOption.style.display = showDetailedLungOutline ? 'flex' : 'none';
+            }
+
+            gameState = 'start';
+            gameOverlay.classList.remove('hidden');
+            gameOverlay.style.display = 'flex'; // Ensure it's displayed as flex
+            startButton.classList.remove('hidden');
+            startButton.style.display = 'block'; // Ensure it's displayed as block
+            debugMenuButton.classList.remove('hidden');
+            debugMenuButton.style.display = 'block'; // Ensure it's displayed as block
+            restartButton.classList.add('hidden');
+            restartButton.style.display = 'none'; // Ensure it's hidden
+            returnToMainMenuButton.classList.add('hidden');
+            returnToMainMenuButton.style.display = 'none'; // Ensure it's hidden
+            debugMenuOverlay.classList.add('hidden');
+            debugMenuOverlay.style.display = 'none'; // Explicitly hide debug menu overlay
+            debugOptions.classList.remove('hidden'); // Ensure debug options are visible
+            levelSelectContainer.classList.add('hidden'); // Hide level select
+            levelSelectContainer.style.display = 'none'; // Ensure it's hidden
+            debugMenuTitle.textContent = "Debug Menu"; // Reset title
+            overlayMessage.textContent = "NanoHealer: Internal Odyssey";
+            // Update mute button text based on initial mute state
+            soundToggleButton.textContent = isMuted ? 'Unmute Sound' : 'Mute Sound';
+            updateHUD();
+            // Start the game loop to render the start screen
+            animationFrameId = requestAnimationFrame(gameLoop);
+            console.log("resetGame finished. New gameState:", gameState); // Debug log
+        }
+
+        /**
+         * Starts the game.
+         * @param {string} [levelName] - Optional. The name of the level to start. Defaults to currentLevelName.
+         */
+        async function startGame(levelName = currentLevelName) {
+            if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+
+            // Ensure AudioContext is initialized and running on user gesture
+            await ensureAudioContext();
+            
+            // Ensure currentLevelName and currentLevelConfig are correctly set for the game session
+            currentLevelName = levelName;
+            currentLevelConfig = JSON.parse(JSON.stringify(levelConfigurations[currentLevelName])); // Explicitly update currentLevelConfig here too
+            
+            loadLevel(levelName); // loadLevel will also update currentLevelConfig, but this ensures it's fresh before loadLevel's side effects
+            gameState = 'playing';
+            gameOverlay.classList.add('hidden');
+            gameOverlay.style.display = 'none'; // Ensure it's hidden
+            debugMenuOverlay.classList.add('hidden');
+            debugMenuOverlay.style.display = 'none'; // Ensure it's hidden
+            soundToggleButton.blur(); // Remove focus from the button
+            lastTime = performance.now();
+            for (let i = 0; i < 3; i++) { spawnPathogen(); }
+            for (let i = 0; i < MAX_FRIENDLY_WBCS; i++) { spawnFriendlyWBC(); }
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        /**
+         * Enters the debug menu.
+         */
+        function enterDebugMenu() {
+            gameState = 'debugMenu';
+            gameOverlay.classList.add('hidden');
+            gameOverlay.style.display = 'none'; // Ensure it's hidden
+            debugMenuOverlay.classList.remove('hidden');
+            debugMenuOverlay.style.display = 'flex'; // Ensure it's displayed as flex
+            debugOptions.classList.remove('hidden'); // Show main debug options
+            debugOptions.style.display = 'flex'; // Ensure it's displayed as flex
+            levelSelectContainer.classList.add('hidden'); // Hide level select
+            levelSelectContainer.style.display = 'none'; // Ensure it's hidden
+            debugMenuTitle.textContent = "Debug Menu"; // Set title
+
+            // Ensure exportBezierOption is hidden/shown correctly when entering debug menu
+            if (exportBezierOption) {
+                exportBezierOption.style.display = showDetailedLungOutline ? 'flex' : 'none';
+            }
+        }
+
+        /**
+         * Enters the level select screen within the debug menu.
+         */
+        function enterLevelSelect() {
+            gameState = 'levelSelect'; // New state for level selection
+            debugOptions.classList.add('hidden'); // Hide main debug options
+            debugOptions.style.display = 'none'; // Ensure it's hidden
+            levelSelectContainer.classList.remove('hidden'); // Show level select buttons
+            levelSelectContainer.style.display = 'flex'; // Ensure it's displayed as flex
+            debugMenuTitle.textContent = "Select Level"; // Change title
+        }
+
+        /**
+         * Returns from level select back to the main debug menu options.
+         */
+        function backToDebugMenu() {
+            gameState = 'debugMenu';
+            debugOptions.classList.remove('hidden'); // Show main debug options
+            debugOptions.style.display = 'flex'; // Ensure it's displayed as flex
+            levelSelectContainer.classList.add('hidden'); // Hide level select buttons
+            levelSelectContainer.style.display = 'none'; // Ensure it's hidden
+            debugMenuTitle.textContent = "Debug Menu"; // Reset title
+
+            // Ensure exportBezierOption is hidden/shown correctly when returning to debug menu
+            if (exportBezierOption) {
+                exportBezierOption.style.display = showDetailedLungOutline ? 'flex' : 'none';
+            }
+        }
+
+
+        // --- Game Loop ---
+        function gameLoop(currentTime = 0) {
+            requestAnimationFrame(gameLoop);
+
+            const deltaTime = (currentTime - lastTime) / 1000 * GAME_SPEED;
+            lastTime = currentTime;
+
+            if (gameState === 'playing') {
+                if (!isPaused) {
+                    vesselPulseTimer += deltaTime;
+                    updateCuraBot(deltaTime);
+                    updateCamera();
+
+                    // Update collision visual timer
+                    if (collisionVisualTimer > 0) {
+                        collisionVisualTimer -= deltaTime;
+                        if (collisionVisualTimer <= 0) {
+                            collidedSegment = null; // Clear the segment when timer runs out
+                        }
+                    }
+
+                    currentLevelConfig.organs.forEach(organ => {
+                        const oldOrganHealth = organ.health;
+                        // Pathogen-organ interaction
+                        pathogens.forEach(pathogen => {
+                            if (distance(pathogen.x, pathogen.y, organ.x, organ.y) < organ.radius) {
+                                if (pathogen.type === 'virus' || pathogen.type === 'bacteria') {
+                                    organ.health -= organ.damageRate * deltaTime;
+                                } else if (pathogen.type === 'toxic') {
+                                    organ.health -= pathogen.damage * deltaTime;
+                                }
+                                organ.health = clamp(organ.health, 0, organ.maxHealth);
+                                if (organ.health < oldOrganHealth) {
+                                    organ.isDamagedVisual = true; organ.isHealingVisual = false; organ.visualTimer = organ.visualDuration;
+                                }
+                            }
+                        });
+                        // Healing from CuraBot's repair nanites (if active)
+                        // Note: The repair nanites are a "spray" type, but their healing effect
+                        // is applied to organs near CuraBot, not necessarily where the visual spray is.
+                        // This is consistent with the idea of nanites working around the bot.
+                        // The `isRepairing` flag is now effectively controlled by the `repairNaniteDuration`
+                        // and `toolVisualTimer` which is triggered by the spray.
+                        // The healing logic below is for continuous healing while the "repair" spray is active.
+                        sprays.filter(s => s.type === 'repair').forEach(repairSpray => {
+                            if (distance(curabot.x, curabot.y, organ.x, organ.y) < curabot.radius + organ.radius * 0.8) {
+                                organ.health += organ.healingRate * deltaTime;
+                                organ.health = clamp(organ.health, 0, organ.maxHealth);
+                                if (organ.health > oldOrganHealth) {
+                                    organ.isHealingVisual = true; organ.isDamagedVisual = false; organ.visualTimer = organ.visualDuration;
+                                }
+                            }
+                        });
+                    });
+
+                    for (let i = pathogens.length - 1; i >= 0; i--) {
+                        const pathogen = pathogens[i];
+                        pathogen.update(deltaTime);
+                        if (checkCircleCollision(curabot, pathogen)) {
+                            if (audioContext.currentTime - curabot.lastDamageTime > curabot.damageCooldown) {
+                                curabot.energy -= pathogen.damage;
+                                curabot.lastDamageTime = audioContext.currentTime;
+                                curabot.energy = clamp(curabot.energy, 0, curabot.maxEnergy);
+                                playSound('damage');
+                                if (curabot.energy <= 0) { setGameOver("Patient's vital systems failed!"); return; }
+                            }
+                        }
+                    }
+
+                    for (let i = projectiles.length - 1; i >= 0; i--) {
+                        const projectile = projectiles[i];
+                        projectile.update(deltaTime);
+                        for (let j = pathogens.length - 1; j >= 0; j--) {
+                            const pathogen = pathogens[j];
+                            if (checkCircleCollision(projectile, pathogen)) {
+                                pathogen.takeDamage(projectile.damage);
+                                projectile.markedForRemoval = true; break;
+                            }
+                        }
+                        for (let j = whiteBloodCells.length - 1; j >= 0; j--) {
+                            const wbc = whiteBloodCells[j];
+                            if (wbc.behavior === 'hostile' && checkCircleCollision(projectile, wbc)) {
+                                wbc.takeDamage(projectile.damage);
+                                projectile.markedForRemoval = true; break;
+                            }
+                        }
+                    }
+
+                    for (let i = sprays.length - 1; i >= 0; i--) {
+                        const spray = sprays[i];
+                        spray.update(deltaTime);
+                        if (spray.type === 'antiviral') {
+                            for (let j = pathogens.length - 1; j >= 0; j--) {
+                                const pathogen = pathogens[j];
+                                // Ensure the spray has a damage property and it's applied
+                                if (pathogen.type === 'virus' && checkCircleCollision(spray, pathogen)) {
+                                    pathogen.takeDamage(spray.damage); // Use spray.damage
+                                }
+                            }
+                        }
+                        // Repair spray effect is handled in the organ loop, not here.
+                    }
+
+                    const currentTimeInSeconds = audioContext ? audioContext.currentTime : currentTime / 1000;
+                    for (let i = whiteBloodCells.length - 1; i >= 0; i--) {
+                        const wbc = whiteBloodCells[i];
+                        wbc.update(deltaTime, pathogens, curabot, currentTimeInSeconds);
+                        if (wbc.behavior === 'hostile' && checkCircleCollision(curabot, wbc)) {
+                            if (currentTimeInSeconds - curabot.lastDamageTime > curabot.damageCooldown) {
+                                curabot.energy -= wbc.damage;
+                                curabot.lastDamageTime = currentTimeInSeconds;
+                                curabot.energy = clamp(curabot.energy, 0, curabot.maxEnergy);
+                                playSound('damage');
+                                if (curabot.energy <= 0) { setGameOver("Patient's vital systems failed!"); return; }
+                            }
+                        }
+                        for (let j = pathogens.length - 1; j >= 0; j--) {
+                            const pathogen = pathogens[j];
+                            if (checkCircleCollision(wbc, pathogen) && currentTimeInSeconds - wbc.lastAttackTime > wbc.attackCooldown) {
+                                pathogen.takeDamage(wbc.damage || 5); wbc.lastAttackTime = currentTimeInSeconds;
+                            }
+                        }
+                    }
+
+                    currentLevelConfig.organs.forEach(organ => {
+                        if (organ.visualTimer > 0) {
+                            organ.visualTimer -= deltaTime;
+                            if (organ.visualTimer <= 0) { organ.isDamagedVisual = false; organ.isHealingVisual = false; }
+                        }
+                    });
+
+                    pathogens = pathogens.filter(p => !p.markedForRemoval);
+                    projectiles = projectiles.filter(p => !p.markedForRemoval);
+                    sprays = sprays.filter(s => !s.markedForRemoval);
+                    whiteBloodCells = whiteBloodCells.filter(wbc => !wbc.markedForRemoval);
+
+                    let terminalOrgansCount = 0;
+                    currentLevelConfig.organs.forEach(organ => {
+                        if (organ.health <= 0) {
+                            terminalOrgansCount++;
+                            if (currentTimeInSeconds - organ.lastHostileWBCSpawn > HOSTILE_WBC_SPAWN_COOLDOWN) {
+                                spawnHostileWBC(organ); organ.lastHostileWBCSpawn = currentTimeInSeconds;
+                            }
+                        }
+                    });
+
+                    if (terminalOrgansCount >= 2) { setGameOver("Patient's vital systems failed!"); return; }
+
+                    pathogenSpawnTimer += deltaTime;
+                    if (pathogenSpawnTimer >= PATHOGEN_SPAWN_INTERVAL) { spawnPathogen(); pathogenSpawnTimer = 0; }
+                    friendlyWBCSpawnTimer += deltaTime;
+                    if (friendlyWBCSpawnTimer >= FRIENDLY_WBC_SPAWN_INTERVAL && whiteBloodCells.filter(wbc => wbc.behavior === 'friendly').length < MAX_FRIENDLY_WBCS) {
+                        spawnFriendlyWBC(); friendlyWBCSpawnTimer = 0;
+                    }
+                }
+
+                ctx.fillStyle = '#0d121c'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.save(); ctx.translate(-camera.x, -camera.y);
+                
+                // Draw blood vessels only for Level A and B
+                if (currentLevelName !== 'levelC' && currentLevelName !== 'levelC_beta') { // Exclude C and C_beta
+                    drawBloodVessels();
+                }
+                drawOrganOutlines(); // This now handles Level C's placeholder and future SVG drawing
+                drawCuraBot();
+                pathogens.forEach(p => p.draw());
+                projectiles.forEach(p => p.draw());
+                sprays.forEach(s => s.draw()); // Sprays drawn here
+                whiteBloodCells.forEach(w => w.draw());
+                ctx.restore();
+                updateHUD();
+
+                // Control gameOverlay visibility for pause state
+                if (isPaused) {
+                    gameOverlay.classList.remove('hidden');
+                    gameOverlay.style.display = 'flex';
+                } else {
+                    gameOverlay.classList.add('hidden');
+                    gameOverlay.style.display = 'none';
+                }
+
+            } else if (gameState === 'start') {
+                overlayMessage.textContent = "NanoHealer: Internal Odyssey";
+                startButton.textContent = "Start Game";
+                gameOverlay.classList.remove('hidden');
+                gameOverlay.style.display = 'flex'; // Ensure it's displayed as flex
+                startButton.classList.remove('hidden');
+                startButton.style.display = 'block'; // Ensure it's displayed as block
+                debugMenuButton.classList.remove('hidden');
+                debugMenuButton.style.display = 'block'; // Ensure it's displayed as block
+                restartButton.classList.add('hidden');
+                returnToMainMenuButton.classList.add('hidden');
+                debugMenuOverlay.classList.add('hidden'); // Hides debug menu
+                debugMenuOverlay.style.display = 'none'; // Explicitly hide debug menu
+                debugOptions.classList.remove('hidden'); // Ensure debug options are visible
+                levelSelectContainer.classList.add('hidden'); // Hide level select
+                levelSelectContainer.style.display = 'none'; // Ensure it's hidden
+                debugMenuTitle.textContent = "Debug Menu"; // Reset title
+                overlayMessage.textContent = "NanoHealer: Internal Odyssey";
+                ctx.fillStyle = '#0d121c'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+                // Ensure camera dimensions are set for the start screen view
+                camera.width = canvas.width;
+                camera.height = canvas.height;
+                camera.x = currentLevelConfig.worldWidth / 2 - camera.width / 2;
+                camera.y = currentLevelConfig.worldHeight / 2 - camera.height / 2;
+                ctx.translate(-camera.x, -camera.y);
+                // Draw blood vessels only for Level A and B
+                if (currentLevelName !== 'levelC' && currentLevelName !== 'levelC_beta') {
+                    drawBloodVessels();
+                }
+                drawOrganOutlines();
+                drawCuraBot();
+                ctx.restore();
+            } else if (gameState === 'gameOver') {
+                // Handled by setGameOver
+                // Still need to draw the scene to show the game over overlay
+                ctx.fillStyle = '#0d121c'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+                camera.width = canvas.width;
+                camera.height = canvas.height;
+                camera.x = currentLevelConfig.worldWidth / 2 - camera.width / 2;
+                camera.y = currentLevelConfig.worldHeight / 2 - camera.height / 2;
+                ctx.translate(-camera.x, -camera.y);
+                if (currentLevelName !== 'levelC' && currentLevelName !== 'levelC_beta') {
+                    drawBloodVessels();
+                }
+                drawOrganOutlines();
+                drawCuraBot();
+                ctx.restore();
+                // Ensure the game over overlay is visible
+                gameOverlay.classList.remove('hidden');
+                gameOverlay.style.display = 'flex';
+
+            } else if (gameState === 'debugMenu' || gameState === 'levelSelect') {
+                ctx.fillStyle = '#0d121c'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                // debugMenuOverlay is expected to be visible here, gameOverlay hidden
+                gameOverlay.classList.add('hidden'); // Ensure gameOverlay is hidden
+                gameOverlay.style.display = 'none';
+                debugMenuOverlay.classList.remove('hidden'); // Ensure debugMenuOverlay is visible
+                debugMenuOverlay.style.display = 'flex';
+                ctx.save();
+                // Center the view for the debug menu
+                camera.x = currentLevelConfig.worldWidth / 2 - camera.width / 2;
+                camera.y = currentLevelConfig.worldHeight / 2 - camera.height / 2;
+                ctx.translate(-camera.x, -camera.y);
+                // Only draw lung structures if it's a lung level and detailed outline is enabled
+                if ((currentLevelName === 'levelC' || currentLevelName === 'levelC_beta') && showDetailedLungOutline) {
+                    drawLungStructures(currentLevelConfig.lungStructures, lastTime);
+                }
+                ctx.restore();
+            } else if (gameState === 'bezierEdit') {
+                // Update editor camera position
+                let dx = 0; let dy = 0;
+                if (keys.KeyW) dy = -1;
+                if (keys.KeyS) dy = 1;
+                if (keys.KeyA) dx = -1;
+                if (keys.KeyD) dx = 1;
+
+                editorCameraX += dx * EDITOR_CAMERA_SPEED * deltaTime;
+                editorCameraY += dy * EDITOR_CAMERA_SPEED * deltaTime;
+
+                // Clamp editor camera to world boundaries, considering zoom level
+                editorCameraX = clamp(editorCameraX, 0, currentLevelConfig.worldWidth - (canvas.width / editorZoomLevel));
+                editorCameraY = clamp(editorCameraY, 0, currentLevelConfig.worldHeight - (canvas.height / editorZoomLevel));
+
+                ctx.fillStyle = '#0d121c'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+                
+                // Apply zoom and translation for the editor view
+                ctx.scale(editorZoomLevel, editorZoomLevel);
+                ctx.translate(-editorCameraX, -editorCameraY);
+
+                // TEST RECTANGLE: Should scale and pan with the zoom
+                ctx.fillStyle = 'purple';
+                ctx.fillRect(100, 100, 50, 50); // Draw a 50x50px rectangle at world (100,100)
+
+                // In bezierEdit, if not paused, debugMenuOverlay is hidden. If paused, gameOverlay is shown.
+                // This is handled by togglePause, but let's ensure the gameLoop doesn't override it.
+                if (!isPaused) { // If not paused in bezierEdit, ensure debug menu is hidden
+                    debugMenuOverlay.classList.add('hidden');
+                    debugMenuOverlay.style.display = 'none';
+                    gameOverlay.classList.add('hidden');
+                    gameOverlay.style.display = 'none';
+                }
+                
+                // Always draw lung structures in bezierEdit mode
+                drawLungStructures(currentLevelConfig.lungStructures, lastTime);
+                ctx.restore(); // Restore context after world drawing
+
+                // Draw HUD elements (zoom level, camera coords) after restoring context
+                // so they are not affected by the editor's camera transform
+                ctx.save();
+                ctx.fillStyle = 'white';
+                ctx.font = '20px Arial';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                ctx.fillText(`Zoom: ${editorZoomLevel.toFixed(2)}x`, 10, 10);
+                ctx.fillText(`Cam: (${editorCameraX.toFixed(0)}, ${editorCameraY.toFixed(0)})`, 10, 40);
+                ctx.restore();
+            }
+        }
+
+        // --- Event Listeners ---
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && gameState === 'playing') { e.preventDefault(); }
+            // Allow 'P' to toggle pause/menu in both playing and bezierEdit states
+            if (e.code === 'KeyP' && (gameState === 'playing' || gameState === 'bezierEdit')) { togglePause(); }
+            
+            // Handle WASD for editor camera movement
+            if (gameState === 'bezierEdit' && !isPaused) {
+                if (e.code === 'KeyW' || e.code === 'KeyS' || e.code === 'KeyA' || e.code === 'KeyD') {
+                    keys[e.code] = true;
+                }
+                // Handle zoom with '+' and '-'
+                if (e.code === 'Equal' || e.key === '+') { // For '+'
+                    console.log("[DEBUG] Plus key pressed. Current zoom:", editorZoomLevel); // Debug log
+                    const oldZoomLevel = editorZoomLevel;
+                    editorZoomLevel = clamp(editorZoomLevel + ZOOM_STEP, MIN_ZOOM, MAX_ZOOM);
+                    // Calculate world coordinates of the center of the canvas BEFORE zoom
+                    const worldCenterX = editorCameraX + (canvas.width / 2 / oldZoomLevel);
+                    const worldCenterY = editorCameraY + (canvas.height / 2 / oldZoomLevel);
+                    // Adjust camera to keep that world point at the center of the canvas AFTER zoom
+                    editorCameraX = worldCenterX - (canvas.width / 2 / editorZoomLevel);
+                    editorCameraY = worldCenterY - (canvas.height / 2 / editorZoomLevel);
+                    // Clamp camera after adjustment
+                    editorCameraX = clamp(editorCameraX, 0, currentLevelConfig.worldWidth - (canvas.width / editorZoomLevel));
+                    editorCameraY = clamp(editorCameraY, 0, currentLevelConfig.worldHeight - (canvas.height / editorZoomLevel));
+                    console.log(`[ZOOM IN] New Zoom: ${editorZoomLevel.toFixed(2)}x, Cam: (${editorCameraX.toFixed(0)}, ${editorCameraY.toFixed(0)})`);
+                }
+                if (e.code === 'Minus' || e.key === '-') { // For '-' (KeyDash)
+                    console.log("[DEBUG] Minus key pressed. Current zoom:", editorZoomLevel); // Debug log
+                    const oldZoomLevel = editorZoomLevel;
+                    editorZoomLevel = clamp(editorZoomLevel - ZOOM_STEP, MIN_ZOOM, MAX_ZOOM);
+                    // Calculate world coordinates of the center of the canvas BEFORE zoom
+                    const worldCenterX = editorCameraX + (canvas.width / 2 / oldZoomLevel);
+                    const worldCenterY = editorCameraY + (canvas.height / 2 / oldZoomLevel);
+                    // Adjust camera to keep that world point at the center of the canvas AFTER zoom
+                    editorCameraX = worldCenterX - (canvas.width / 2 / editorZoomLevel);
+                    editorCameraY = worldCenterY - (canvas.height / 2 / editorZoomLevel);
+                    // Clamp camera after adjustment
+                    editorCameraX = clamp(editorCameraX, 0, currentLevelConfig.worldWidth - (canvas.width / editorZoomLevel));
+                    editorCameraY = clamp(editorCameraY, 0, currentLevelConfig.worldHeight - (canvas.height / editorZoomLevel));
+                    console.log(`[ZOOM OUT] New Zoom: ${editorZoomLevel.toFixed(2)}x, Cam: (${editorCameraX.toFixed(0)}, ${editorCameraY.toFixed(0)})`);
+                }
+            }
+
+            // General key handling (for game movement when not in editor mode)
+            if (keys.hasOwnProperty(e.code)) { keys[e.code] = true; }
+
+            if (gameState === 'playing' && !isPaused) {
+                if (e.code === 'Digit1') curabot.currentToolIndex = 0;
+                if (e.code === 'Digit2') curabot.currentToolIndex = 1;
+                if (e.code === 'Digit3') curabot.currentToolIndex = 2;
+                if (e.code === 'Digit4') curabot.currentToolIndex = 3; // Select Teleport tool
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (keys.hasOwnProperty(e.code)) { keys[e.code] = false; }
+        });
+
+        const touchArea = canvas;
+        let touchStartX = 0; let touchStartY = 0; const touchThreshold = 20;
+
+        touchArea.addEventListener('touchstart', async (e) => { // Made async to await ensureAudioContext
+            e.preventDefault();
+            if (gameState === 'playing' && !isPaused && e.touches.length === 1) {
+                await ensureAudioContext(); // Ensure audio context is running on touch
+                touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY;
+                keys.Space = true;
+                const currentTime = audioContext.currentTime; // Use audioContext.currentTime
+
+                switch (curabot.currentToolIndex) {
+                    case 0: // Standard Pulse
+                        if (currentTime - curabot.lastPulseTime > curabot.pulseCooldown) {
+                            if (curabot.energy >= curabot.pulseEnergyCost || infiniteEnergy) {
+                                curabot.energy -= infiniteEnergy ? 0 : curabot.pulseEnergyCost;
+                                const tapX = (e.touches[0].clientX - canvas.getBoundingClientRect().left) + camera.x;
+                                const tapY = (e.touches[0].clientY - canvas.getBoundingClientRect().top) + camera.y;
+                                projectiles.push(new Projectile(curabot.x, curabot.y, tapX, tapY, 300, 20, '#ffcc00', 5));
+                                curabot.lastPulseTime = currentTime; curabot.isToolActiveVisual = true; curabot.toolVisualTimer = curabot.toolVisualDuration;
+                                playSound('pulse');
+                            }
+                        }
+                        break;
+                    case 1: // Antiviral Agent Spray
+                        if (currentTime - curabot.lastSprayTime > curabot.sprayCooldown) {
+                            sprays.push(new Spray(curabot.x, curabot.y, 10, 70, 0.5, 'rgba(159, 122, 234, 0.5)', 'antiviral', 5));
+                            curabot.lastSprayTime = currentTime; curabot.isToolActiveVisual = true; curabot.toolVisualTimer = curabot.toolVisualDuration;
+                            playSound('spray');
+                        }
+                        break;
+                    case 2: // Cellular Repair Nanites
+                        if (currentTime - curabot.lastRepairTime > curabot.repairNaniteDuration) {
+                            if (curabot.energy > 0) {
+                                const activationCost = curabot.repairNaniteEnergyCost;
+                                if (!infiniteEnergy && curabot.energy < activationCost) { return; }
+                                if (!infiniteEnergy) { curabot.energy -= activationCost; }
+                                sprays.push(new Spray(curabot.x, curabot.y, 10, 70, 0.5, 'rgba(72, 187, 120, 0.5)', 'repair'));
+                                curabot.lastRepairTime = currentTime;
+                                curabot.isToolActiveVisual = true;
+                                curabot.toolVisualTimer = curabot.toolVisualDuration;
+                                playSound('repair_placeholder');
+                            }
+                        }
+                        break;
+                    case 3: // Teleport (New Tool 4)
+                        if (currentTime - curabot.lastTeleportTime > curabot.teleportCooldown) {
+                            if (curabot.energy >= curabot.teleportEnergyCost || infiniteEnergy) {
+                                curabot.energy -= infiniteEnergy ? 0 : curabot.teleportEnergyCost;
+                                const teleportTargetX = curabot.x + curabot.teleportDistance * Math.cos(curabot.rotation);
+                                const teleportTargetY = curabot.y + curabot.teleportDistance * Math.sin(curabot.rotation);
+
+                                let canTeleport = true; // Assume can teleport initially
+
+                                // Check world bounds first (this remains)
+                                if (teleportTargetX < curabot.radius || teleportTargetX > currentLevelConfig.worldWidth - curabot.radius ||
+                                    teleportTargetY < curabot.radius || teleportTargetY > currentLevelConfig.worldHeight - curabot.radius) {
+                                    canTeleport = false;
+                                }
+                                
+                                // Teleport no longer respects the pleura boundary as a hard stop.
+                                // It will only be limited by the overall world boundaries.
+                                
+                                if (canTeleport) {
+                                    curabot.x = teleportTargetX;
+                                    curabot.y = teleportTargetY;
+                                    curabot.lastTeleportTime = currentTime;
+                                    curabot.isToolActiveVisual = true;
+                                    curabot.toolVisualTimer = curabot.toolVisualDuration;
+                                    playSound('teleport');
+                                    if (curabot.energy <= 0 && !infiniteEnergy) { setGameOver("CuraBot ran out of energy!"); return; }
+                                } else {
+                                    // Teleport failed, perhaps play a "fail" sound or visual cue
+                                    // (This will now only trigger if world bounds are hit)
+                                }
+                            }
+                        }
+                        break;
+                }
+            } else { curabot.isRepairing = false; }
+            if (curabot.isToolActiveVisual) {
+                curabot.toolVisualTimer -= deltaTime;
+                if (curabot.toolVisualTimer <= 0) { curabot.isToolActiveVisual = false; }
+            }
+        });
+
+        touchArea.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (gameState === 'playing' && !isPaused && e.touches.length === 1) {
+                const touchCurrentX = e.touches[0].clientX; const touchCurrentY = e.touches[0].clientY;
+                const diffX = touchCurrentX - touchStartX; const diffY = touchCurrentY - touchStartY;
+                keys.ArrowUp = keys.ArrowDown = keys.ArrowLeft = keys.ArrowRight = false;
+                keys.KeyW = keys.KeyS = keys.KeyA = keys.KeyD = false;
+                if (Math.abs(diffX) > Math.abs(diffY)) {
+                    if (diffX > touchThreshold) keys.ArrowRight = true;
+                    else if (diffX < -touchThreshold) keys.ArrowLeft = true;
+                } else {
+                    if (diffY > touchThreshold) keys.ArrowDown = true;
+                    else if (diffY < -touchThreshold) keys.ArrowUp = true;
+                }
+            }
+        });
+
+        touchArea.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            keys.ArrowUp = keys.ArrowDown = keys.ArrowLeft = keys.ArrowRight = false;
+            keys.KeyW = keys.KeyS = keys.KeyA = keys.KeyD = false;
+            keys.Space = false;
+            curabot.isRepairing = false;
+        });
+
+        startButton.addEventListener('click', () => startGame(currentLevelName));
+        restartButton.addEventListener('click', () => startGame(currentLevelName));
+        debugMenuButton.addEventListener('click', enterDebugMenu);
+        backToMainMenuFromDebugButton.addEventListener('click', resetGame);
+        returnToMainMenuButton.addEventListener('click', resetGame);
+
+        organLabelsToggle.addEventListener('click', () => {
+            showOrganLabels = !showOrganLabels;
+            organLabelsToggle.textContent = showOrganLabels ? 'ON' : 'OFF';
+            organLabelsToggle.classList.toggle('debug-toggle-on', showOrganLabels);
+            organLabelsToggle.classList.toggle('debug-toggle-off', !showOrganLabels);
+        });
+
+        infiniteEnergyToggle.addEventListener('click', () => {
+            infiniteEnergy = !infiniteEnergy;
+            infiniteEnergyToggle.textContent = infiniteEnergy ? 'ON' : 'OFF';
+            infiniteEnergyToggle.classList.toggle('debug-toggle-on', infiniteEnergy);
+            infiniteEnergyToggle.classList.toggle('debug-toggle-off', !infiniteEnergy);
+        });
+
+        detailedLungOutlineToggle.addEventListener('click', () => { // New event listener
+            showDetailedLungOutline = !showDetailedLungOutline;
+            detailedLungOutlineToggle.textContent = showDetailedLungOutline ? 'ON' : 'OFF';
+            detailedLungOutlineToggle.classList.toggle('debug-toggle-on', showDetailedLungOutline);
+            detailedLungOutlineToggle.classList.toggle('debug-toggle-off', !showDetailedLungOutline);
+
+            // Get the new div
+            const exportBezierOption = document.getElementById('exportBezierOption');
+
+            if (showDetailedLungOutline) {
+                // Ensure a lung level is loaded before entering bezierEdit
+                if (currentLevelName !== 'levelC' && currentLevelName !== 'levelC_beta') {
+                    loadLevel('levelC_beta'); // Automatically load a lung level
+                }
+                gameState = 'bezierEdit';
+                debugMenuOverlay.classList.add('hidden'); // Hide debug menu to show canvas for editing
+                debugMenuOverlay.style.display = 'none';
+                
+                // --- FIX: Set zoom level BEFORE calculating camera position ---
+                editorZoomLevel = 1.0; // Reset zoom when entering editor
+                // Initialize editor camera to center of the lung
+                editorCameraX = currentLevelConfig.worldWidth / 2 - (canvas.width / 2 / editorZoomLevel);
+                editorCameraY = currentLevelConfig.worldHeight / 2 - (canvas.height / 2 / editorZoomLevel);
+                // --- END FIX ---
+
+                // The exportBezierOption is part of the debug menu, so it will be hidden with the menu.
+                // It will become visible when the user returns to the debug menu if detailed outline is ON.
+            } else {
+                gameState = 'debugMenu';
+                debugMenuOverlay.classList.remove('hidden'); // Show debug menu again
+                debugMenuOverlay.style.display = 'flex';
+                selectedBezierPoint = null; // Deselect any point
+                // Make the export option visible when returning to debug menu if detailed outline was ON
+                if (exportBezierOption) {
+                    exportBezierOption.style.display = 'flex';
+                }
+            }
+        });
+
+        levelSelectButton.addEventListener('click', enterLevelSelect);
+        levelAButton.addEventListener('click', () => startGame('levelA'));
+        levelBButton.addEventListener('click', () => startGame('levelB'));
+        levelCButton.addEventListener('click', () => startGame('levelC'));
+        levelCBetaButton.addEventListener('click', () => startGame('levelC_beta')); // Event listener for new button
+        backToDebugMenuButton.addEventListener('click', backToDebugMenu);
+        exitGameButton.addEventListener('click', resetGame); // New event listener for Exit Game button
+
+        // Moved soundToggleButton.addEventListener outside of initializeAudioSynths
+        soundToggleButton.addEventListener('click', () => {
+            isMuted = !isMuted;
+            if (audioContext && masterGainNode) { // Check if audioContext and masterGainNode exist
+                masterGainNode.gain.value = isMuted ? 0 : 0.3; // Set master volume to 0.3 when unmuted
+            }
+            soundToggleButton.textContent = isMuted ? 'Unmute Sound' : 'Mute Sound';
+        });
+
+        // New event listener for the Test Sounds button
+        testSoundsButton.addEventListener('click', testAllSounds);
+
+        // Event listener for the new export button
+        exportBezierButton.addEventListener('click', () => {
+            try {
+                const bezierData = currentLevelConfig.lungStructures.tissueWalls[0].segments;
+                const jsonString = JSON.stringify(bezierData, null, 2); // Pretty print JSON
+
+                // Log to console for easy access
+                console.log("Copied Bezier Data:\n", jsonString);
+
+                // Create a temporary textarea element to copy text
+                const tempTextArea = document.createElement('textarea');
+                tempTextArea.value = jsonString;
+                document.body.appendChild(tempTextArea);
+                tempTextArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempTextArea);
+
+                // Provide visual feedback
+                showMessageBox("Bezier data copied to clipboard!");
+            } catch (error) {
+                console.error("Failed to copy Bezier data:", error);
+                showMessageBox("Failed to copy Bezier data. See console for details.");
+            }
+        });
+
+        // Helper for showing temporary messages (like "Copied to clipboard!")
+        function showMessageBox(message, duration = 2000) {
+            const msgBox = document.createElement('div');
+            msgBox.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background-color: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 15px 25px;
+                border-radius: 10px;
+                font-size: 1.2rem;
+                z-index: 1000;
+                opacity: 0;
+                transition: opacity 0.5s ease-in-out;
+                pointer-events: none; /* Allow clicks to pass through */
+            `;
+            msgBox.textContent = message;
+            document.body.appendChild(msgBox);
+
+            // Fade in
+            setTimeout(() => {
+                msgBox.style.opacity = 1;
+            }, 10); // Small delay to trigger transition
+
+            // Fade out and remove
+            setTimeout(() => {
+                msgBox.style.opacity = 0;
+                msgBox.addEventListener('transitionend', () => msgBox.remove());
+            }, duration);
+        }
+
+        // --- Bezier Editor Mouse Events ---
+        canvas.addEventListener('mousedown', (e) => {
+            if (gameState === 'bezierEdit' && !isPaused) { // Only allow interaction if not paused
+                const rect = canvas.getBoundingClientRect();
+                // Convert mouse coordinates to world coordinates, considering zoom and camera pan
+                const mouseX = ((e.clientX - rect.left) / editorZoomLevel) + editorCameraX;
+                const mouseY = ((e.clientY - rect.top) / editorZoomLevel) + editorCameraY;
+
+                const tissueWall = currentLevelConfig.lungStructures.tissueWalls[0]; // Assuming only one for now
+                if (tissueWall && tissueWall.type === 'bezier' && tissueWall.segments) {
+                    for (let i = 0; i < tissueWall.segments.length; i++) {
+                        const segment = tissueWall.segments[i];
+                        // Ensure segment is not undefined before accessing its properties
+                        if (!segment) continue;
+
+                        const pointsToCheck = [
+                            { x: segment.startX, y: segment.startY, type: 'startX' },
+                            { x: segment.endX, y: segment.endY, type: 'endX' },
+                            { x: segment.control1X, y: segment.control1Y, type: 'control1X' },
+                            { x: segment.control2X, y: segment.control2Y, type: 'control2X' }
+                        ];
+
+                        for (const point of pointsToCheck) {
+                            // Compare world mouse coordinates to world point coordinates, using scaled handle radius
+                            // BEZIER_HANDLE_RADIUS is in world units, so it's scaled by editorZoomLevel on screen.
+                            // To check for clicks, we need to compare against the screen size of the handle.
+                            // The effective click radius on screen is BEZIER_HANDLE_RADIUS / editorZoomLevel.
+                            const clickRadiusWorld = BEZIER_HANDLE_RADIUS / editorZoomLevel; // Corrected for click detection
+                            if (distance(mouseX, mouseY, point.x, point.y) < clickRadiusWorld) { 
+                                selectedBezierPoint = {
+                                    wallIndex: 0, // Assuming first tissueWall for now
+                                    segmentIndex: i,
+                                    pointType: point.type,
+                                    originalX: point.x, // Store original for offset calculation
+                                    originalY: point.y,
+                                };
+                                // Calculate drag offset in world coordinates
+                                dragOffsetX = mouseX - point.x;
+                                dragOffsetY = mouseY - point.y;
+                                canvas.style.cursor = 'grabbing';
+                                return; // Found a point, stop checking
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (gameState === 'bezierEdit' && selectedBezierPoint && !isPaused) { // Only allow interaction if not paused
+                const rect = canvas.getBoundingClientRect();
+                // Convert mouse coordinates to world coordinates
+                const newMouseX = ((e.clientX - rect.left) / editorZoomLevel) + editorCameraX;
+                const newMouseY = ((e.clientY - rect.top) / editorZoomLevel) + editorCameraY;
+
+                const tissueWall = currentLevelConfig.lungStructures.tissueWalls[selectedBezierPoint.wallIndex];
+                const segments = tissueWall.segments;
+                const currentSegmentIndex = selectedBezierPoint.segmentIndex;
+                const segment = segments[currentSegmentIndex];
+
+                const newX = newMouseX - dragOffsetX;
+                const newY = newMouseY - dragOffsetY;
+
+                switch (selectedBezierPoint.pointType) {
+                    case 'startX':
+                        segment.startX = newX;
+                        segment.startY = newY;
+                        // If this is the start of a segment, it's also the end of the previous segment
+                        const prevSegmentIndex = (currentSegmentIndex - 1 + segments.length) % segments.length;
+                        segments[prevSegmentIndex].endX = newX;
+                        segments[prevSegmentIndex].endY = newY;
+                        break;
+                    case 'endX':
+                        segment.endX = newX;
+                        segment.endY = newY;
+                        // If this is the end of a segment, it's also the start of the next segment
+                        const nextSegmentIndex = (currentSegmentIndex + 1) % segments.length;
+                        segments[nextSegmentIndex].startX = newX;
+                        segments[nextSegmentIndex].startY = newY;
+                        break;
+                    case 'control1X':
+                        segment.control1X = newX;
+                        segment.control1Y = newY;
+                        break;
+                    case 'control2X':
+                        segment.control2X = newX;
+                        segment.control2Y = newY;
+                        break;
+                }
+                // Recalculate lung structure coordinates if any anchor point of trachea/bronchi is moved
+                // For Bezier tissue walls, we just redraw.
+            } else if (gameState === 'bezierEdit' && !isPaused) { // Update cursor if not dragging and not paused
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = ((e.clientX - rect.left) / editorZoomLevel) + editorCameraX;
+                const mouseY = ((e.clientY - rect.top) / editorZoomLevel) + editorCameraY;
+
+                let cursorChanged = false;
+                const tissueWall = currentLevelConfig.lungStructures.tissueWalls[0]; // Assuming only one for now
+                if (tissueWall && tissueWall.type === 'bezier' && tissueWall.segments) {
+                    for (let i = 0; i < tissueWall.segments.length; i++) {
+                        const segment = tissueWall.segments[i];
+                        // Ensure segment is not undefined before accessing its properties
+                        if (!segment) continue;
+
+                        const pointsToCheck = [
+                            { x: segment.startX, y: segment.startY },
+                            { x: segment.endX, y: segment.endY },
+                            { x: segment.control1X, y: segment.control1Y },
+                            { x: segment.control2X, y: segment.control2Y }
+                        ];
+                        for (const point of pointsToCheck) {
+                            const clickRadiusWorld = BEZIER_HANDLE_RADIUS / editorZoomLevel; // Corrected for click detection
+                            if (distance(mouseX, mouseY, point.x, point.y) < clickRadiusWorld) { 
+                                canvas.style.cursor = 'grab';
+                                cursorChanged = true;
+                                break;
+                            }
+                        }
+                        if (cursorChanged) break;
+                    }
+                }
+                if (!cursorChanged) {
+                    canvas.style.cursor = 'default';
+                }
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            if (gameState === 'bezierEdit') {
+                selectedBezierPoint = null;
+                canvas.style.cursor = 'default';
+                // You might want to log the updated coordinates here for saving
+                // console.log("Updated Lung Bezier Segments:", currentLevelConfig.lungStructures.tissueWalls[0].segments);
+            }
+        });
+
+
+        window.onload = function() {
+            resetGame(); // This should set gameState to 'start' and make overlay visible
+            // The gameLoop will be requested by resetGame, ensuring initial rendering.
+        };
+
+        window.addEventListener('resize', () => {
+            canvas.width = Math.min(window.innerWidth * 0.9, 800);
+            canvas.height = Math.min(window.innerHeight * 0.7, 600);
+            camera.width = canvas.width;
+            camera.height = canvas.height;
+            if (gameState !== 'playing') {
+                // When not playing, re-center CuraBot relative to the current level's world
+                curabot.x = currentLevelConfig.initialCuraBotX;
+                curabot.y = currentLevelConfig.initialCuraBotY;
+                // Also update camera position for non-playing states (start/debug/gameover)
+                camera.x = currentLevelConfig.worldWidth / 2 - camera.width / 2;
+                camera.y = currentLevelConfig.worldHeight / 2 - camera.height / 2;
+                camera.x = clamp(camera.x, 0, currentLevelConfig.worldWidth - camera.width);
+                camera.y = clamp(camera.y, 0, currentLevelConfig.worldHeight - camera.height);
+            }
+            // Redraw everything if needed (gameLoop will handle this for 'playing' state)
+            if (gameState === 'start' || gameState === 'gameOver' || gameState === 'debugMenu' || gameState === 'levelSelect' || isPaused || gameState === 'bezierEdit') {
+                ctx.fillStyle = '#0d121c'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+                // Ensure camera dimensions are set for the start screen view
+                camera.width = canvas.width;
+                camera.height = canvas.height;
+                camera.x = currentLevelConfig.worldWidth / 2 - camera.width / 2;
+                camera.y = currentLevelConfig.worldHeight / 2 - camera.height / 2;
+                ctx.translate(-camera.x, -camera.y);
+                // Draw blood vessels only for Level A and B
+                if (currentLevelName !== 'levelC' && currentLevelName !== 'levelC_beta') {
+                    drawBloodVessels();
+                }
+                drawOrganOutlines();
+                if (gameState === 'start' || gameState === 'gameOver' || gameState === 'debugMenu' || gameState === 'levelSelect' || isPaused) {
+                    drawCuraBot(); // Only draw curabot if not in bezierEdit mode
+                }
+                ctx.restore();
+            }
+        });
+    </script>
+</body>
+</html>
